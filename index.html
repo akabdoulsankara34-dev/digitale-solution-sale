@@ -2527,14 +2527,17 @@ function showPage(id){
   if(id==='page-app') initApp();
   if(id==='page-admin'){
     if(!AdminAuth.isLogged()){
+      // Redirige vers login admin sans boucle
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       document.getElementById('page-admin-login')?.classList.add('active');
+      setTimeout(()=>document.getElementById('adm-pwd')?.focus(),200);
     } else {
       adminSection('overview');
+      startAdminClock();
+      updatePayBadge();
     }
   }
   if(id==='page-payment') {
-    // Apply current theme to payment page
     const theme = localStorage.getItem('ds_theme')||'dark';
     document.documentElement.setAttribute('data-theme', theme);
   }
@@ -2565,29 +2568,40 @@ function renewLicense(){
 
 // ---- FINAL INIT override ----
 document.addEventListener('DOMContentLoaded', () => {
-  // Charger la config admin en cache
-ADB.loadPlansCache().catch(console.error);
-// Activer l'écoute temps réel si connecté
-const _m = Auth.current();
-if (_m) initRealtimeSubscriptions();
-  const params=new URLSearchParams(window.location.search);
-  const token=params.get('admin');
-  const cfg=ADB.getCfg();
-  if(token&&token===cfg.token){
-    // Admin route
-    if(AdminAuth.isLogged()){
-      showPage('page-admin');
-      adminSection('overview');
-      startAdminClock();
-      updatePayBadge();
+  // 1. Initialiser les defaults admin AVANT toute vérification
+  ADB.initDefaults();
+
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get('admin');
+
+  if (urlToken) {
+    // Un token est présent dans l'URL → tenter l'accès admin
+    // On relit la config APRÈS initDefaults() pour être sûr qu'elle existe
+    const cfg = ADB.getCfg();
+    const validToken = cfg.token || 'DIGITALE';
+
+    if (urlToken === validToken) {
+      // Token correct → afficher login admin ou panel si déjà connecté
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      if (AdminAuth.isLogged()) {
+        document.getElementById('page-admin')?.classList.add('active');
+        adminSection('overview');
+        startAdminClock();
+        updatePayBadge();
+      } else {
+        document.getElementById('page-admin-login')?.classList.add('active');
+        // Focus automatique sur le champ mot de passe
+        setTimeout(() => document.getElementById('adm-pwd')?.focus(), 200);
+      }
     } else {
-      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      document.getElementById('page-admin-login')?.classList.add('active');
+      // Token présent mais incorrect → page landing + message discret
+      console.warn('Token admin invalide.');
+      showPage('page-landing');
     }
   } else {
-    // Normal user route
+    // Pas de token → route normale utilisateur
     const m = Auth.current();
-    if(m){
+    if (m) {
       showPage('page-app');
     } else {
       showPage('page-landing');
@@ -2596,6 +2610,5 @@ if (_m) initRealtimeSubscriptions();
   }
 });
 </script>
-<script type="module" src="firebase_client.js"></script>
 </body>
 </html>
