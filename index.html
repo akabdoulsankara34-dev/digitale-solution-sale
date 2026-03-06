@@ -589,8 +589,44 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   .plan-grid,.op-grid{grid-template-columns:1fr}
 }
   </style>
+  <!-- Scripts (defer = chargés après le HTML, dans l'ordre) -->
 </head>
 <body>
+<script>
+// Proxy immédiat — permet aux onclick d'appeler des fonctions pas encore chargées
+(function(){
+  var _q = [];
+  function make(n){
+    return function(){
+      var a = Array.prototype.slice.call(arguments);
+      if(window['__'+n]) return window['__'+n].apply(this,a);
+      _q.push([n,a]);
+    };
+  }
+  var fns = ['showPage','demoLogin','setTheme','showSection','toggleSidebar',
+    'reqPin','closeMo','closeMoOv','logout','registerMerchant','loginMerchant',
+    'saveProduct','deleteProduct','openProductModal','addToCart','updCartQty',
+    'rmFromCart','clearCart','checkout','setPrintFmt','doPrint','sendWA',
+    'viewSaleInvoice','sendWAMarketing','openClientModal','saveClient','deleteClient',
+    'renderSales','deleteSale','saveWelcome','saveMerchantInfo','saveDevise',
+    'savePin','confirmReset','pinKey','pinDel','adminLogin','adminLogout',
+    'adminSection','openMerchantDetail','saveMerchantAdmin','toggleMerchantStatus',
+    'deleteMerchantAdmin','validatePayReq','rejectPayReq','savePlans',
+    'saveAdminConfig','saveOperators','openPaymentPage','goToPayStep',
+    'selectPlan','selectOperator','submitPayment','renewLicense'];
+  fns.forEach(function(n){ window[n] = make(n); });
+  window.__flushProxy = function(){
+    fns.forEach(function(n){
+      if(typeof window['_fn_'+n]==='function') window['__'+n]=window['_fn_'+n];
+    });
+    _q.forEach(function(item){
+      if(window['__'+item[0]]) window['__'+item[0]].apply(null,item[1]);
+    });
+    _q=[];
+  };
+})();
+</script>
+
 
 <!-- SVG DEFS -->
 <svg style="display:none">
@@ -1364,6 +1400,10 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </div>
 
 <!-- ====================== SCRIPTS ====================== -->
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/supabase_client.js"></script>
 <script src="/assets/js/db.js"></script>
 <script src="/assets/js/ui.js"></script>
 <script src="/assets/js/dashboard.js"></script>
@@ -1375,9 +1415,5 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 <script src="/assets/js/admin.js"></script>
 <script src="/assets/js/payment.js"></script>
 <script src="/assets/js/app.js"></script>
-<!-- Supabase SDK (UMD) doit être avant supabase_client.js -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/supabase_client.js"></script>
-
 </body>
 </html>

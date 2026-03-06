@@ -202,3 +202,32 @@ function fmtMoney(n, dev) {
 }
 
 
+
+
+// ---- SHOW PAGE ----
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+
+  if (id === 'page-app') {
+    if (typeof initApp === 'function') initApp();
+  }
+
+  if (id === 'page-admin') {
+    if (typeof AdminAuth !== 'undefined' && !AdminAuth.isLogged()) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-admin-login')?.classList.add('active');
+      setTimeout(() => document.getElementById('adm-pwd')?.focus(), 200);
+    } else if (typeof adminSection === 'function') {
+      adminSection('overview');
+      if (typeof startAdminClock === 'function') startAdminClock();
+      if (typeof updatePayBadge === 'function') updatePayBadge();
+    }
+  }
+
+  if (id === 'page-payment') {
+    const theme = localStorage.getItem('ds_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+}
