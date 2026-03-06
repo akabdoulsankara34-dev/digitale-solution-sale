@@ -1095,30 +1095,139 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 
     <!-- CONFIG -->
     <div id="as-config" class="adm-section">
-      <div class="adm-card" style="margin-bottom:20px">
-        <div class="adm-card-hdr"><h3>📱 Numéros de paiement Mobile Money</h3></div>
+
+      <!-- APERÇU LIVE des numéros configurés -->
+      <div id="op-cards-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
+
+      <!-- ORANGE MONEY -->
+      <div class="adm-card" style="margin-bottom:16px;border-color:rgba(255,140,0,0.2)">
+        <div class="adm-card-hdr" style="background:rgba(255,140,0,0.05)">
+          <h3>🟠 Orange Money</h3>
+          <span id="cfg-orange-status" style="font-size:.75rem;color:#64748B">Non configuré</span>
+        </div>
         <div class="adm-card-body" style="padding:20px">
-          <div id="op-cards-preview" style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap"></div>
           <div class="adm-grid2">
             <div>
-              <div class="adm-fg"><label>🟠 Numéro Orange Money</label><input id="cfg-orange-num" placeholder="226XXXXXXXX"/></div>
-              <div class="adm-fg"><label>Nom bénéficiaire Orange</label><input id="cfg-orange-name" placeholder="DIGITALE SOLUTION"/></div>
+              <div class="adm-fg">
+                <label>Pays / Opérateur</label>
+                <select id="cfg-orange-country" onchange="onOrangeCountryChange()">
+                  <option value="bf">🇧🇫 Burkina Faso — *144#</option>
+                  <option value="ci">🇨🇮 Côte d'Ivoire — *144#</option>
+                  <option value="sn">🇸🇳 Sénégal — *144#</option>
+                  <option value="ml">🇲🇱 Mali — *144#</option>
+                  <option value="gn">🇬🇳 Guinée — *144#</option>
+                </select>
+              </div>
+              <div class="adm-fg">
+                <label>Numéro marchand Orange Money</label>
+                <input id="cfg-orange-num" placeholder="ex: 22670000000" inputmode="numeric"
+                  oninput="this.value=this.value.replace(/\D/g,'')" onkeyup="previewOrange()"/>
+                <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">Format : indicatif + numéro sans espace ni +</small>
+              </div>
             </div>
             <div>
-              <div class="adm-fg"><label>🔵 Numéro Moov Money</label><input id="cfg-moov-num" placeholder="226XXXXXXXX"/></div>
-              <div class="adm-fg"><label>Nom bénéficiaire Moov</label><input id="cfg-moov-name" placeholder="DIGITALE SOLUTION"/></div>
+              <div class="adm-fg">
+                <label>Nom affiché au client</label>
+                <input id="cfg-orange-name" placeholder="ex: DIGITALE SOLUTION"/>
+              </div>
+              <div class="adm-fg">
+                <label>Code USSD Orange</label>
+                <input id="cfg-orange-ussd" placeholder="*144#" value="*144#"/>
+              </div>
+              <button onclick="testOrangeWA()" style="background:rgba(255,140,0,.15);border:1px solid rgba(255,140,0,.3);color:#FF8C00;padding:7px 14px;border-radius:7px;font-size:.78rem;cursor:pointer;margin-top:4px">
+                📲 Tester via WhatsApp
+              </button>
             </div>
           </div>
-          <div class="adm-fg"><label>📲 WhatsApp support (notification paiement)</label><input id="cfg-wa-support" placeholder="226XXXXXXXXX"/></div>
-          <button class="btn-p" onclick="saveAdminConfig()">💾 Enregistrer la configuration</button>
         </div>
       </div>
-      <div class="adm-card">
+
+      <!-- MOOV MONEY -->
+      <div class="adm-card" style="margin-bottom:16px;border-color:rgba(0,100,200,0.2)">
+        <div class="adm-card-hdr" style="background:rgba(0,100,200,0.05)">
+          <h3>🔵 Moov Money</h3>
+          <span id="cfg-moov-status" style="font-size:.75rem;color:#64748B">Non configuré</span>
+        </div>
+        <div class="adm-card-body" style="padding:20px">
+          <div class="adm-grid2">
+            <div>
+              <div class="adm-fg">
+                <label>Pays / Opérateur</label>
+                <select id="cfg-moov-country" onchange="onMoovCountryChange()">
+                  <option value="bf">🇧🇫 Burkina Faso — *555#</option>
+                  <option value="ci">🇨🇮 Côte d'Ivoire — *155#</option>
+                  <option value="tg">🇹🇬 Togo — *155#</option>
+                  <option value="bj">🇧🇯 Bénin — *155#</option>
+                </select>
+              </div>
+              <div class="adm-fg">
+                <label>Numéro marchand Moov Money</label>
+                <input id="cfg-moov-num" placeholder="ex: 22675000000" inputmode="numeric"
+                  oninput="this.value=this.value.replace(/\D/g,'')" onkeyup="previewMoov()"/>
+                <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">Format : indicatif + numéro sans espace ni +</small>
+              </div>
+            </div>
+            <div>
+              <div class="adm-fg">
+                <label>Nom affiché au client</label>
+                <input id="cfg-moov-name" placeholder="ex: DIGITALE SOLUTION"/>
+              </div>
+              <div class="adm-fg">
+                <label>Code USSD Moov</label>
+                <input id="cfg-moov-ussd" placeholder="*555#" value="*555#"/>
+              </div>
+              <button onclick="testMoovWA()" style="background:rgba(0,100,200,.15);border:1px solid rgba(0,100,200,.3);color:#4FC3F7;padding:7px 14px;border-radius:7px;font-size:.78rem;cursor:pointer;margin-top:4px">
+                📲 Tester via WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WHATSAPP SUPPORT -->
+      <div class="adm-card" style="margin-bottom:16px;border-color:rgba(37,211,102,0.2)">
+        <div class="adm-card-hdr" style="background:rgba(37,211,102,0.04)">
+          <h3>💬 WhatsApp Support</h3>
+        </div>
+        <div class="adm-card-body" style="padding:20px">
+          <div class="adm-grid2">
+            <div class="adm-fg">
+              <label>Numéro WhatsApp support</label>
+              <input id="cfg-wa-support" placeholder="ex: 22670000000" inputmode="numeric"
+                oninput="this.value=this.value.replace(/\D/g,'')"/>
+              <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">Les clients vous contactent ici après un paiement</small>
+            </div>
+            <div style="display:flex;align-items:flex-end;padding-bottom:6px">
+              <button onclick="testSupportWA()" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25D366;padding:9px 16px;border-radius:7px;font-size:.82rem;cursor:pointer">
+                💬 Tester le numéro support
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAVE BUTTON -->
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px">
+        <button class="btn-p" onclick="saveAdminConfig()" style="padding:12px 28px;font-size:.95rem">
+          💾 Enregistrer tous les numéros
+        </button>
+        <span id="cfg-save-feedback" style="font-size:.82rem;color:#2ECC71;display:none">✅ Sauvegardé !</span>
+      </div>
+
+      <!-- SÉCURITÉ -->
+      <div class="adm-card" style="border-color:rgba(231,76,60,0.15)">
         <div class="adm-card-hdr"><h3>🔐 Sécurité admin</h3></div>
         <div class="adm-card-body" style="padding:20px">
           <div class="adm-grid2">
-            <div class="adm-fg"><label>Nouveau mot de passe admin</label><input type="password" id="cfg-adm-pwd" placeholder="Nouveau mot de passe"/></div>
-            <div class="adm-fg"><label>Token URL secret (après ?admin=)</label><input id="cfg-adm-token" placeholder="ex: DS2024ADMIN"/></div>
+            <div class="adm-fg">
+              <label>Nouveau mot de passe admin</label>
+              <input type="password" id="cfg-adm-pwd" placeholder="Minimum 6 caractères"/>
+            </div>
+            <div class="adm-fg">
+              <label>Token URL secret (après ?admin=)</label>
+              <input id="cfg-adm-token" placeholder="ex: MON_TOKEN_SECRET"/>
+              <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">URL d'accès : <span id="cfg-token-preview" style="color:#E8730C">?admin=DIGITALE</span></small>
+            </div>
           </div>
           <button class="btn-p" onclick="saveAdminSecurity()">🔐 Mettre à jour la sécurité</button>
         </div>
@@ -2317,27 +2426,139 @@ function savePlans(){
 // ---- CONFIG ----
 function renderAdminConfig(){
   const cfg=ADB.getCfg();
-  document.getElementById('cfg-orange-num').value=cfg.orange_num||'';
-  document.getElementById('cfg-orange-name').value=cfg.orange_name||'';
-  document.getElementById('cfg-moov-num').value=cfg.moov_num||'';
-  document.getElementById('cfg-moov-name').value=cfg.moov_name||'';
-  document.getElementById('cfg-wa-support').value=cfg.wa_support||'';
-  document.getElementById('cfg-adm-token').value=cfg.token||'DIGITALE';
-  document.getElementById('op-cards-preview').innerHTML=
-    '<div class="op-card"><div class="op-ico orange">🟠</div><div class="op-detail"><div class="op-name" style="color:#E2E8F0">Orange Money</div><div class="op-num">'+(cfg.orange_num||'Non configuré')+'</div></div></div>'+
-    '<div class="op-card"><div class="op-ico moov">🔵</div><div class="op-detail"><div class="op-name" style="color:#E2E8F0">Moov Money</div><div class="op-num">'+(cfg.moov_num||'Non configuré')+'</div></div></div>';
+  // Orange
+  document.getElementById('cfg-orange-num').value  = cfg.orange_num  || '';
+  document.getElementById('cfg-orange-name').value = cfg.orange_name || 'DIGITALE SOLUTION';
+  document.getElementById('cfg-orange-ussd').value = cfg.orange_ussd || '*144#';
+  document.getElementById('cfg-moov-num').value    = cfg.moov_num    || '';
+  document.getElementById('cfg-moov-name').value   = cfg.moov_name   || 'DIGITALE SOLUTION';
+  document.getElementById('cfg-moov-ussd').value   = cfg.moov_ussd   || '*555#';
+  document.getElementById('cfg-wa-support').value  = cfg.wa_support  || '';
+  document.getElementById('cfg-adm-token').value   = cfg.token       || 'DIGITALE';
+  // Country selects
+  if(cfg.orange_country) document.getElementById('cfg-orange-country').value = cfg.orange_country;
+  if(cfg.moov_country)   document.getElementById('cfg-moov-country').value   = cfg.moov_country;
+  // Token preview
+  const tp = document.getElementById('cfg-token-preview');
+  if(tp) tp.textContent = '?admin=' + (cfg.token || 'DIGITALE');
+  // Status indicators
+  updateOpStatus();
+  // Cards preview
+  renderOpCardsPreview(cfg);
+}
+
+function renderOpCardsPreview(cfg){
+  const el = document.getElementById('op-cards-preview');
+  if(!el) return;
+  const orange = cfg.orange_num || '';
+  const moov   = cfg.moov_num   || '';
+  const wa     = cfg.wa_support || '';
+  el.innerHTML =
+    '<div class="op-card" style="background:#0A0E16;border:1px solid rgba(255,140,0,'+(orange?'.3':'.1')+');border-radius:9px;padding:14px 16px;display:flex;align-items:center;gap:12px">'+
+      '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,140,0,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🟠</div>'+
+      '<div><div style="font-weight:700;font-size:.85rem;color:#E2E8F0">Orange Money</div>'+
+      '<div style="font-family:monospace;font-size:.82rem;color:'+(orange?'#FF8C00':'#374151')+'">'+(orange||'Non configuré')+'</div></div>'+
+    '</div>'+
+    '<div class="op-card" style="background:#0A0E16;border:1px solid rgba(0,100,200,'+(moov?'.3':'.1')+');border-radius:9px;padding:14px 16px;display:flex;align-items:center;gap:12px">'+
+      '<div style="width:40px;height:40px;border-radius:10px;background:rgba(0,100,200,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🔵</div>'+
+      '<div><div style="font-weight:700;font-size:.85rem;color:#E2E8F0">Moov Money</div>'+
+      '<div style="font-family:monospace;font-size:.82rem;color:'+(moov?'#4FC3F7':'#374151')+'">'+(moov||'Non configuré')+'</div></div>'+
+    '</div>'+
+    '<div class="op-card" style="background:#0A0E16;border:1px solid rgba(37,211,102,'+(wa?'.25':'.08')+');border-radius:9px;padding:14px 16px;display:flex;align-items:center;gap:12px">'+
+      '<div style="width:40px;height:40px;border-radius:10px;background:rgba(37,211,102,.1);display:flex;align-items:center;justify-content:center;font-size:1.2rem">💬</div>'+
+      '<div><div style="font-weight:700;font-size:.85rem;color:#E2E8F0">WhatsApp Support</div>'+
+      '<div style="font-family:monospace;font-size:.82rem;color:'+(wa?'#25D366':'#374151')+'">'+(wa||'Non configuré')+'</div></div>'+
+    '</div>';
+}
+
+function updateOpStatus(){
+  const on = document.getElementById('cfg-orange-num').value.trim();
+  const mn = document.getElementById('cfg-moov-num').value.trim();
+  const os = document.getElementById('cfg-orange-status');
+  const ms = document.getElementById('cfg-moov-status');
+  if(os) { os.textContent = on ? '✅ Configuré — ' + on : '⚠️ Non configuré'; os.style.color = on ? '#2ECC71' : '#64748B'; }
+  if(ms) { ms.textContent = mn ? '✅ Configuré — ' + mn : '⚠️ Non configuré'; ms.style.color = mn ? '#2ECC71' : '#64748B'; }
+  // Token preview
+  const tok = document.getElementById('cfg-adm-token');
+  const tp  = document.getElementById('cfg-token-preview');
+  if(tok && tp) tp.textContent = '?admin=' + (tok.value || 'DIGITALE');
+}
+
+function previewOrange(){ updateOpStatus(); }
+function previewMoov()  { updateOpStatus(); }
+
+// USSD auto-fill par pays
+const USSD_CODES = {
+  orange: {bf:'*144#', ci:'*144#', sn:'*144#', ml:'*144#', gn:'*144#'},
+  moov:   {bf:'*555#', ci:'*155#', tg:'*155#', bj:'*155#'}
+};
+function onOrangeCountryChange(){
+  const c = document.getElementById('cfg-orange-country').value;
+  const u = USSD_CODES.orange[c] || '*144#';
+  document.getElementById('cfg-orange-ussd').value = u;
+}
+function onMoovCountryChange(){
+  const c = document.getElementById('cfg-moov-country').value;
+  const u = USSD_CODES.moov[c] || '*555#';
+  document.getElementById('cfg-moov-ussd').value = u;
+}
+
+// Test via WhatsApp
+function testOrangeWA(){
+  const num = document.getElementById('cfg-orange-num').value.trim();
+  if(!num){ showAdminToast('⚠️ Entrez d\'abord le numéro Orange Money','error'); return; }
+  const ussd = document.getElementById('cfg-orange-ussd').value || '*144#';
+  const msg = '🧪 TEST Digitale Solution\n\nCeci est un test de configuration Orange Money.\nNuméro marchand : ' + num + '\nCode USSD : ' + ussd;
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank');
+}
+function testMoovWA(){
+  const num = document.getElementById('cfg-moov-num').value.trim();
+  if(!num){ showAdminToast('⚠️ Entrez d\'abord le numéro Moov Money','error'); return; }
+  const ussd = document.getElementById('cfg-moov-ussd').value || '*555#';
+  const msg = '🧪 TEST Digitale Solution\n\nCeci est un test de configuration Moov Money.\nNuméro marchand : ' + num + '\nCode USSD : ' + ussd;
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank');
+}
+function testSupportWA(){
+  const num = document.getElementById('cfg-wa-support').value.trim();
+  if(!num){ showAdminToast('⚠️ Entrez d\'abord le numéro WhatsApp support','error'); return; }
+  const msg = '🧪 TEST Digitale Solution\n\nCeci est un test du numéro de support.\nSi vous recevez ce message, la configuration est correcte ✅';
+  window.open('https://wa.me/' + num + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 function saveAdminConfig(){
-  const cfg=ADB.getCfg();
-  cfg.orange_num=document.getElementById('cfg-orange-num').value.trim();
-  cfg.orange_name=document.getElementById('cfg-orange-name').value.trim();
-  cfg.moov_num=document.getElementById('cfg-moov-num').value.trim();
-  cfg.moov_name=document.getElementById('cfg-moov-name').value.trim();
-  cfg.wa_support=document.getElementById('cfg-wa-support').value.trim();
-  ADB.set('config',cfg);
-  ADB.addActivity('config','Configuration paiement mobile mise à jour');
-  showAdminToast('✅ Configuration sauvegardée','success');
+  const cfg = ADB.getCfg();
+  const orange_num  = document.getElementById('cfg-orange-num').value.trim();
+  const moov_num    = document.getElementById('cfg-moov-num').value.trim();
+  const wa_support  = document.getElementById('cfg-wa-support').value.trim();
+
+  // Validation numéros
+  if(orange_num && !/^\d{8,15}$/.test(orange_num)){
+    showAdminToast('⚠️ Numéro Orange invalide (chiffres uniquement, 8-15 caractères)','error'); return;
+  }
+  if(moov_num && !/^\d{8,15}$/.test(moov_num)){
+    showAdminToast('⚠️ Numéro Moov invalide (chiffres uniquement, 8-15 caractères)','error'); return;
+  }
+  if(wa_support && !/^\d{8,15}$/.test(wa_support)){
+    showAdminToast('⚠️ Numéro WhatsApp invalide (chiffres uniquement, 8-15 caractères)','error'); return;
+  }
+
+  cfg.orange_num     = orange_num;
+  cfg.orange_name    = document.getElementById('cfg-orange-name').value.trim() || 'DIGITALE SOLUTION';
+  cfg.orange_ussd    = document.getElementById('cfg-orange-ussd').value.trim() || '*144#';
+  cfg.orange_country = document.getElementById('cfg-orange-country').value;
+  cfg.moov_num       = moov_num;
+  cfg.moov_name      = document.getElementById('cfg-moov-name').value.trim() || 'DIGITALE SOLUTION';
+  cfg.moov_ussd      = document.getElementById('cfg-moov-ussd').value.trim() || '*555#';
+  cfg.moov_country   = document.getElementById('cfg-moov-country').value;
+  cfg.wa_support     = wa_support;
+
+  ADB.set('config', cfg);
+  ADB.addActivity('config', 'Numéros de paiement configurés — Orange:' + (orange_num||'—') + ' Moov:' + (moov_num||'—'));
+
+  // Feedback visuel
+  const fb = document.getElementById('cfg-save-feedback');
+  if(fb){ fb.style.display='inline'; setTimeout(()=>fb.style.display='none', 3000); }
+  showAdminToast('✅ Numéros sauvegardés avec succès !', 'success');
   renderAdminConfig();
 }
 
@@ -2452,17 +2673,26 @@ function buildPayInstructions(){
   const cfg=ADB.getCfg(), plans=ADB.getPlans();
   const plan=plans[payState.plan];
   const isOrange=payState.operator==='orange';
-  const num=isOrange?cfg.orange_num:cfg.moov_num;
-  const ussd=isOrange?'*144#':'*555#';
-  // Generate unique reference for this payment request
+  const num  = isOrange ? (cfg.orange_num  || '') : (cfg.moov_num  || '');
+  const ussd = isOrange ? (cfg.orange_ussd || '*144#') : (cfg.moov_ussd || '*555#');
+  const name = isOrange ? (cfg.orange_name || 'DIGITALE SOLUTION') : (cfg.moov_name || 'DIGITALE SOLUTION');
+  // Alerte si numéro non configuré
+  if(!num){
+    showToast('⚠️ Numéro '+( isOrange?'Orange':'Moov')+' Money non configuré. Contactez l\'administrateur.','error');
+  }
+  // Generate unique reference
   const m=Auth.current();
-  payState.ref='DS-'+Date.now().toString(36).toUpperCase().slice(-6)+'-'+(m?.nom_commerce||'').slice(0,3).toUpperCase();
+  const suffix=(m?.nom_commerce||'DS').replace(/\s/g,'').slice(0,3).toUpperCase();
+  payState.ref='DS-'+Date.now().toString(36).toUpperCase().slice(-6)+'-'+suffix;
   document.getElementById('pay-op-ico').textContent=isOrange?'🟠':'🔵';
   document.getElementById('ussd-code').textContent=ussd;
-  document.getElementById('pay-dest-num').textContent=num||'Non configuré';
+  document.getElementById('pay-dest-num').textContent=num||'⚠️ Non configuré — contactez le support';
   document.getElementById('pay-amount-display').textContent=fmtMoney(plan.prix,'FCFA');
   document.getElementById('pay-ref-code').textContent=payState.ref;
   document.getElementById('pay-trans-ref').value='';
+  // Show beneficiary name under number
+  const destEl=document.getElementById('pay-dest-num');
+  if(destEl && num) destEl.title='Bénéficiaire : '+name;
 }
 
 function submitPayment(){
