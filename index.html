@@ -1815,12 +1815,20 @@ function saveProduct() {
   const stkVal = document.getElementById('p-stk').value;
   const rec = {nom, prix, stock: stkVal === '' ? null : parseInt(stkVal), categorie: document.getElementById('p-cat').value.trim()};
   editProdId ? DB.update('products', editProdId, rec, m.id) : DB.insert('products', rec, m.id);
+  // Sync Firebase
+  if (window._fbDb && window._fbLib) FBDB.syncToFirestore('products', m.id).catch(()=>{});
   showToast('✅ Produit ' + (editProdId ? 'mis à jour' : 'ajouté'), 'success');
   closeMo('mo-prod'); renderProducts(); renderPOS();
 }
 function deleteProduct(id) {
   const m = Auth.current(); if (!confirm('Supprimer ce produit ?')) return;
-  DB.delete('products', id, m.id); showToast('🗑️ Supprimé', 'success'); renderProducts(); renderPOS();
+  DB.delete('products', id, m.id);
+  // Sync Firebase
+  if (window._fbDb && window._fbLib) {
+    const { doc, deleteDoc } = window._fbLib;
+    deleteDoc(doc(window._fbDb, 'products', id)).catch(()=>{});
+  }
+  showToast('🗑️ Supprimé', 'success'); renderProducts(); renderPOS();
 }
 function renderProducts() {
   const m = Auth.current(); if (!m) return;
@@ -1949,6 +1957,12 @@ function processCheckout() {
   const allP = DB.get('products');
   cart.forEach(ci => { const idx = allP.findIndex(p => p.id === ci.pid && p.merchant_id === m.id); if (idx !== -1 && allP[idx].stock !== null) allP[idx].stock = Math.max(0, allP[idx].stock - ci.qty); });
   DB.set('products', allP);
+  // Sync Firebase immédiatement
+  if (window._fbDb && window._fbLib) {
+    FBDB.syncToFirestore('sales', m.id).catch(()=>{});
+    FBDB.syncToFirestore('products', m.id).catch(()=>{});
+    if (cliId) FBDB.syncToFirestore('clients', m.id).catch(()=>{});
+  }
   // Store for WA button
   currentSaleWA = cliWA;
   currentSaleName = cliNom;
@@ -2185,15 +2199,100 @@ function registerMerchant(e) {
       password: p, type: document.getElementById('reg-type').value
     });
     Auth.login(m.telephone, p);
+    // Sauvegarder dans Firebase si connecté
+    if (window._fbDb && window._fbLib) {
+      FBDB.syncToFirestore('merchants', null).catch(e => console.warn('Firebase sync error:', e));
+      FBDB.syncToFirestore('configs', m.id).catch(e => console.warn('Firebase sync error:', e));
+    }
     showPage('page-app');
     showToast('🎉 Bienvenue sur Digitale Solution !', 'success');
   } catch(err) { er.textContent = err.message; er.classList.remove('hidden'); }
 }
-function loginMerchant(e) {
+
+// Connexion avec fallback Firebase si compte absent localement
+async function loginMerchant(e) {
   e.preventDefault();
   const er = document.getElementById('login-err'); er.classList.add('hidden');
-  try { Auth.login(document.getElementById('login-tel').value.trim(), document.getElementById('login-pwd').value); showPage('page-app'); }
-  catch(err) { er.textContent = err.message; er.classList.remove('hidden'); }
+  const tel = document.getElementById('login-tel').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+  const btn = e.target.querySelector('button[type="submit"]');
+
+  // Désactiver le bouton pendant la tentative
+  if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+
+  try {
+    // 1. Essai local d'abord
+    try {
+      Auth.login(tel, pwd);
+      showPage('page-app');
+      return;
+    } catch(localErr) {
+      // Compte absent localement — essayer Firebase
+      if (!window._fbDb || !window._fbLib) throw localErr;
+    }
+
+    // 2. Chercher le marchand dans Firestore
+    showToast('🔄 Recherche du compte en ligne...', 'success');
+    const { collection, query, where, getDocs } = window._fbLib;
+    const q = query(collection(window._fbDb, 'merchants'), where('telephone', '==', tel));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      throw new Error('Numéro ou mot de passe incorrect.');
+    }
+
+    // 3. Trouver le bon marchand (vérifier le mot de passe)
+    let foundMerchant = null;
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.password === DB._hash(pwd)) foundMerchant = data;
+    });
+
+    if (!foundMerchant) throw new Error('Numéro ou mot de passe incorrect.');
+    if (!foundMerchant.actif) throw new Error('Compte désactivé.');
+
+    // 4. Sauvegarder localement et se connecter
+    const merchants = DB.get('merchants');
+    const existing = merchants.findIndex(m => m.id === foundMerchant.id);
+    if (existing !== -1) merchants[existing] = foundMerchant;
+    else merchants.push(foundMerchant);
+    DB.set('merchants', merchants);
+
+    // 5. Charger les données du marchand depuis Firestore
+    showToast('🔄 Chargement de vos données...', 'success');
+    await loadMerchantDataFromFirebase(foundMerchant.id);
+
+    // 6. Connecter
+    sessionStorage.setItem('ds_m', JSON.stringify(foundMerchant));
+    showPage('page-app');
+    showToast('✅ Connecté depuis Firebase !', 'success');
+
+  } catch(err) {
+    er.textContent = err.message;
+    er.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Se connecter →'; }
+  }
+}
+
+// Charger toutes les données d'un marchand depuis Firestore vers localStorage
+async function loadMerchantDataFromFirebase(merchantId) {
+  if (!window._fbDb || !window._fbLib) return;
+  const { collection, query, where, getDocs } = window._fbLib;
+  const collections = ['products', 'sales', 'clients', 'configs'];
+  for (const col of collections) {
+    try {
+      const q = query(collection(window._fbDb, col), where('merchant_id', '==', merchantId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const remoteItems = snap.docs.map(d => d.data());
+        const all = DB.get(col) || [];
+        // Remplacer les données de ce marchand par celles de Firestore
+        const others = all.filter(r => r.merchant_id !== merchantId);
+        DB.set(col, [...others, ...remoteItems]);
+      }
+    } catch(e) { console.warn('Erreur chargement ' + col + ':', e); }
+  }
 }
 function demoLogin() {
   const ph = '0700000001';
@@ -2364,6 +2463,8 @@ function applyStockAdj() {
   }
   allP[idx].stock = newStock;
   DB.set('products', allP);
+  // Sync Firebase
+  if (window._fbDb && window._fbLib) FBDB.syncToFirestore('products', m.id).catch(()=>{});
   const reason = document.getElementById('stk-reason').value.trim();
   const opLabel = {add:'Entrée', sub:'Sortie', set:'Ajustement'}[stkOp];
   showToast(`✅ ${opLabel} stock — ${p.nom} : ${newStock} unités${reason?' ('+reason+')':''}`, 'success');
@@ -3029,7 +3130,7 @@ function submitPayment(){
 // ============================================================
 
 // initApp : charge l'interface commerce après login
-function initApp(){
+async function initApp(){
   const m = Auth.current(); if(!m){showPage('page-login');return;}
   document.getElementById('sb-cname').textContent = m.nom_commerce;
   document.getElementById('mm-name').textContent = m.proprietaire;
@@ -3040,6 +3141,27 @@ function initApp(){
   document.getElementById('cb-ico').textContent = icons[m.type]||'🏪';
   checkLicense(m);
   showSection('pos');
+
+  // Charger les données Firebase en arrière-plan si connecté
+  if (window._fbDb && window._fbLib) {
+    loadMerchantDataFromFirebase(m.id).then(() => {
+      // Rafraîchir la vue après chargement
+      const active = document.querySelector('.section.active');
+      if (active) {
+        const sec = active.id.replace('s-', '');
+        const renderers = {dashboard:renderDashboard, pos:renderPOS, products:renderProducts, stock:renderStock, clients:renderClients, sales:renderSales};
+        renderers[sec]?.();
+      }
+      // Activer la sync temps réel
+      activateFirebaseSync();
+    }).catch(e => console.warn('Erreur chargement Firebase:', e));
+  } else {
+    // Firebase pas encore prêt — attendre l'événement
+    window.addEventListener('firebase-ready', () => {
+      loadMerchantDataFromFirebase(m.id).then(() => activateFirebaseSync());
+    }, {once: true});
+  }
+
   // Notification demande paiement en attente
   const pending=ADB.getPayReqs().filter(r=>r.merchant_id===m.id&&r.statut==='pending');
   if(pending.length){
@@ -3179,21 +3301,22 @@ function activateFirebaseSync() {
   // Stopper les anciens listeners
   _fbListeners.forEach(u => { try { u(); } catch(e){} });
   _fbListeners = [];
-  // Activer les listeners temps réel
-  const col = ['products', 'sales', 'clients'];
-  col.forEach(c => {
-    const unsub = FBDB.listen(c, m.id, () => {
-      // Refresh la vue active
-      const active = document.querySelector('.section.active');
-      if (active) {
-        const sec = active.id.replace('s-', '');
-        const renderers = {dashboard:renderDashboard,pos:renderPOS,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales};
-        renderers[sec]?.();
-      }
-    });
+
+  function refreshActiveView() {
+    const active = document.querySelector('.section.active');
+    if (!active) return;
+    const sec = active.id.replace('s-', '');
+    const renderers = {dashboard:renderDashboard, pos:renderPOS, products:renderProducts, stock:renderStock, clients:renderClients, sales:renderSales};
+    renderers[sec]?.();
+  }
+
+  // Activer les listeners temps réel pour chaque collection
+  const cols = ['products', 'sales', 'clients'];
+  cols.forEach(c => {
+    const unsub = FBDB.listen(c, m.id, () => refreshActiveView());
     if (unsub) _fbListeners.push(unsub);
   });
-  console.log('🔥 Synchronisation Firebase temps réel activée');
+  console.log('🔥 Synchronisation Firebase temps réel activée pour', m.nom_commerce);
 }
 
 // Déconnexion avec nettoyage Firebase listeners
