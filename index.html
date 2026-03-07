@@ -588,6 +588,15 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   .adm-kpi-grid{grid-template-columns:1fr 1fr}
   .plan-grid,.op-grid{grid-template-columns:1fr}
 }
+
+/* ---- STOCK SECTION ---- */
+.sbdg{display:inline-block;padding:3px 10px;border-radius:100px;font-size:.72rem;font-weight:700;letter-spacing:.04em}
+.s-ok{background:rgba(46,204,113,.12);color:var(--success)}
+.s-low{background:rgba(243,156,18,.12);color:var(--warning)}
+.s-zero{background:rgba(231,76,60,.12);color:var(--danger)}
+/* lic-exp-warn topbar */
+#lic-exp-warn{font-size:.78rem;padding:4px 10px;background:rgba(243,156,18,.15);color:var(--warning);border-radius:var(--rsm);display:none}
+
 </style>
 <body>
 
@@ -721,6 +730,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <button class="ni" onclick="reqPin('dashboard')" data-s="dashboard"><span class="ni-ico">📊</span><span class="nl">Dashboard</span><span class="ni-lock">🔒</span></button>
       <button class="ni" onclick="showSection('pos')" data-s="pos"><span class="ni-ico">🛒</span><span class="nl">Point de Vente</span></button>
       <button class="ni" onclick="reqPin('products')" data-s="products"><span class="ni-ico">📦</span><span class="nl">Produits</span><span class="ni-lock">🔒</span></button>
+      <button class="ni" onclick="reqPin('stock')" data-s="stock"><span class="ni-ico">🏭</span><span class="nl">Gestion Stock</span><span class="ni-lock">🔒</span></button>
       <button class="ni" onclick="reqPin('clients')" data-s="clients"><span class="ni-ico">👥</span><span class="nl">Clients</span><span class="ni-lock">🔒</span></button>
       <button class="ni" onclick="reqPin('sales')" data-s="sales"><span class="ni-ico">🧾</span><span class="nl">Ventes</span><span class="ni-lock">🔒</span></button>
       <button class="ni" onclick="reqPin('settings')" data-s="settings"><span class="ni-ico">⚙️</span><span class="nl">Paramètres</span><span class="ni-lock">🔒</span></button>
@@ -739,6 +749,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
         <h2 id="tb-title">Dashboard</h2>
       </div>
       <div class="tb-r">
+        <span id="lic-exp-warn"></span>
         <div class="theme-pills" id="app-theme-pills">
           <div class="tp active" data-t="dark" title="Sombre" onclick="setTheme('dark',this)"></div>
           <div class="tp" data-t="light" title="Clair" onclick="setTheme('light',this)"></div>
@@ -795,6 +806,34 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
           <button class="btn-p full xl" onclick="processCheckout()">✓ Valider la vente</button>
         </div>
       </div>
+    </section>
+
+    <!-- GESTION STOCK -->
+    <section id="s-stock" class="section">
+      <div class="stbar">
+        <input class="si" id="stk-srch" placeholder="🔍 Rechercher un produit..." oninput="renderStock()"/>
+        <div style="display:flex;gap:8px">
+          <select id="stk-filter" onchange="renderStock()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:8px 12px;font-size:.85rem">
+            <option value="">Tout le stock</option>
+            <option value="rupture">⛔ Rupture (0)</option>
+            <option value="faible">⚠️ Stock faible (≤5)</option>
+            <option value="ok">✅ Stock OK</option>
+            <option value="infini">∞ Illimité</option>
+          </select>
+          <button class="btn-p" onclick="openStockAdjModal()">+ Ajustement rapide</button>
+        </div>
+      </div>
+      <!-- KPI stock -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="kpi"><div class="kpi-lbl">Total produits</div><div class="kpi-val" id="stk-kpi-total">0</div><div class="kpi-sub">En catalogue</div></div>
+        <div class="kpi" style="border-color:rgba(231,76,60,.3)"><div class="kpi-lbl">Ruptures</div><div class="kpi-val" style="color:var(--danger)" id="stk-kpi-zero">0</div><div class="kpi-sub">Stock à zéro</div></div>
+        <div class="kpi" style="border-color:rgba(243,156,18,.3)"><div class="kpi-lbl">Stock faible</div><div class="kpi-val" style="color:var(--warning)" id="stk-kpi-low">0</div><div class="kpi-sub">≤ 5 unités</div></div>
+        <div class="kpi" style="border-color:rgba(46,204,113,.3)"><div class="kpi-lbl">Valeur stock</div><div class="kpi-val acc" id="stk-kpi-val">0</div><div class="kpi-sub">Estimation</div></div>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock actuel</th><th>Statut</th><th>Valeur</th><th>Actions</th></tr></thead>
+        <tbody id="stk-tbody"><tr><td colspan="7" class="empty">Aucun produit.</td></tr></tbody>
+      </table>
     </section>
 
     <!-- PRODUITS -->
@@ -897,6 +936,33 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   </div>
 </div>
 
+<!-- MODAL AJUSTEMENT STOCK -->
+<div id="mo-stk" class="mo hidden" onclick="closeMoOv(event,'mo-stk')">
+  <div class="modal" style="max-width:460px">
+    <div class="mhdr"><h3 id="mo-stk-title">🏭 Ajustement de stock</h3><button class="mcls" onclick="closeMo('mo-stk')">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>Produit</label>
+        <select id="stk-prod-sel" onchange="onStkProdChange()" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:11px 14px;font-size:.9rem;width:100%">
+          <option value="">— Sélectionner un produit —</option>
+        </select>
+      </div>
+      <div id="stk-current-info" style="background:var(--surface2);border-radius:var(--rsm);padding:12px 14px;margin-bottom:16px;font-size:.88rem;display:none">
+        Stock actuel : <strong id="stk-current-val" style="color:var(--accent)">—</strong>
+      </div>
+      <div class="fg"><label>Type d'opération</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <button class="fmt-btn active" id="stk-op-add" onclick="setStkOp('add',this)">➕ Entrée</button>
+          <button class="fmt-btn" id="stk-op-sub" onclick="setStkOp('sub',this)">➖ Sortie</button>
+          <button class="fmt-btn" id="stk-op-set" onclick="setStkOp('set',this)">🎯 Définir</button>
+        </div>
+      </div>
+      <div class="fg"><label id="stk-qty-label">Quantité à ajouter</label><input type="number" id="stk-qty" placeholder="0" min="0" style="font-size:1.2rem;font-weight:700;text-align:center"/></div>
+      <div class="fg"><label>Motif (optionnel)</label><input id="stk-reason" placeholder="Ex: Livraison reçue, Inventaire..."/></div>
+    </div>
+    <div class="mftr"><button class="btn-g" onclick="closeMo('mo-stk')">Annuler</button><button class="btn-p" onclick="applyStockAdj()">✅ Appliquer</button></div>
+  </div>
+</div>
+
 <!-- MODAL CLIENT -->
 <div id="mo-cli" class="mo hidden" onclick="closeMoOv(event,'mo-cli')">
   <div class="modal">
@@ -993,6 +1059,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       <button class="adm-ni" onclick="adminSection('payments')" data-as="payments"><span class="adm-ni-ico">💳</span> Paiements <span id="adm-pay-badge" style="background:#E74C3C;color:white;font-size:.6rem;padding:1px 5px;border-radius:100px;margin-left:4px;display:none">0</span></button>
       <button class="adm-ni" onclick="adminSection('plans')" data-as="plans"><span class="adm-ni-ico">📦</span> Plans & Tarifs</button>
       <button class="adm-ni" onclick="adminSection('config')" data-as="config"><span class="adm-ni-ico">⚙️</span> Configuration</button>
+      <button class="adm-ni" onclick="adminSection('developer')" data-as="developer"><span class="adm-ni-ico">🔥</span> Développeur</button>
       <button class="adm-ni" onclick="adminSection('activity')" data-as="activity"><span class="adm-ni-ico">📋</span> Activité</button>
     </nav>
     <div class="adm-foot">
@@ -1097,7 +1164,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <div id="as-config" class="adm-section">
 
       <!-- APERÇU LIVE des numéros configurés -->
-      <div id="op-cards-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px"></div>
+      <div id="op-cards-preview" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px"></div>
 
       <!-- ORANGE MONEY -->
       <div class="adm-card" style="margin-bottom:16px;border-color:rgba(255,140,0,0.2)">
@@ -1234,6 +1301,103 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
       </div>
     </div>
 
+    <!-- DEVELOPER / FIREBASE -->
+    <div id="as-developer" class="adm-section">
+
+      <!-- Statut Firebase -->
+      <div class="adm-card" style="margin-bottom:20px;border-color:rgba(255,160,0,0.25)">
+        <div class="adm-card-hdr" style="background:rgba(255,160,0,0.05)">
+          <h3>🔥 Firebase Firestore</h3>
+          <span id="adm-fb-status-badge" style="font-size:.75rem;color:#64748B">Non connecté</span>
+        </div>
+        <div class="adm-card-body" style="padding:20px">
+          <p style="font-size:.82rem;color:#64748B;margin-bottom:20px">
+            Firebase Firestore synchronise toutes les données des commerces en temps réel sur tous les appareils.
+            Obtenez vos clés sur <a href="https://console.firebase.google.com" target="_blank" style="color:#E8730C">console.firebase.google.com</a>.
+          </p>
+          <div class="adm-grid2">
+            <div>
+              <div class="adm-fg">
+                <label>API Key</label>
+                <input type="password" id="adm-fb-apikey" placeholder="AIzaSy..."/>
+              </div>
+              <div class="adm-fg">
+                <label>Project ID</label>
+                <input id="adm-fb-projectid" placeholder="mon-projet-firebase"/>
+              </div>
+              <div class="adm-fg">
+                <label>App ID</label>
+                <input id="adm-fb-appid" placeholder="1:123456789:web:abc..."/>
+              </div>
+            </div>
+            <div>
+              <div class="adm-fg">
+                <label>Auth Domain</label>
+                <input id="adm-fb-authdomain" placeholder="projet.firebaseapp.com"/>
+                <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">Laissez vide pour auto-détecter depuis le Project ID</small>
+              </div>
+              <div class="adm-fg">
+                <label>Storage Bucket</label>
+                <input id="adm-fb-storagebucket" placeholder="projet.appspot.com"/>
+              </div>
+              <div class="adm-fg">
+                <label>Messaging Sender ID</label>
+                <input id="adm-fb-senderid" placeholder="123456789"/>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">
+            <button class="btn-p" onclick="saveAdminFirebaseConfig()" style="background:#FF9800;border-color:#FF9800">🔥 Connecter Firebase</button>
+            <button class="btn-g sm" onclick="testFirebaseConnection()">🔌 Tester la connexion</button>
+            <button class="btn-g sm" onclick="syncAllMerchantsToFirebase()">☁️ Sync global</button>
+            <button class="btn-d sm" onclick="disconnectFirebase()" style="font-size:.78rem;padding:6px 12px">⛔ Déconnecter</button>
+          </div>
+          <div id="adm-fb-feedback" style="margin-top:12px;font-size:.82rem;display:none"></div>
+        </div>
+      </div>
+
+      <!-- Règles Firestore -->
+      <div class="adm-card" style="margin-bottom:20px;border-color:rgba(79,195,247,0.2)">
+        <div class="adm-card-hdr"><h3>📋 Règles de sécurité Firestore</h3></div>
+        <div class="adm-card-body" style="padding:20px">
+          <p style="font-size:.82rem;color:#64748B;margin-bottom:12px">Copiez ces règles dans Firebase Console → Firestore → Règles :</p>
+          <pre id="fb-rules-pre" style="background:#0A0E16;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:16px;font-size:.75rem;color:#94A3B8;overflow-x:auto;white-space:pre-wrap;line-height:1.6">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Merchants — lecture/écriture selon merchant_id
+    match /merchants/{merchantId} {
+      allow read, write: if request.auth == null; // Mode demo
+    }
+    match /products/{id} {
+      allow read, write: if request.auth == null;
+    }
+    match /sales/{id} {
+      allow read, write: if request.auth == null;
+    }
+    match /clients/{id} {
+      allow read, write: if request.auth == null;
+    }
+    match /configs/{id} {
+      allow read, write: if request.auth == null;
+    }
+  }
+}</pre>
+          <button class="btn-g sm" style="margin-top:10px" onclick="copyFirebaseRules()">📋 Copier les règles</button>
+        </div>
+      </div>
+
+      <!-- Infos DB -->
+      <div class="adm-card">
+        <div class="adm-card-hdr"><h3>📊 État de la base de données locale</h3><button class="btn-g sm" onclick="renderAdminDeveloper()">🔄 Actualiser</button></div>
+        <div class="adm-card-body" style="padding:20px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="adm-db-stats"></div>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-g sm" onclick="exportLocalDB()">⬇️ Exporter DB locale (JSON)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ACTIVITY -->
     <div id="as-activity" class="adm-section">
       <div class="adm-card">
@@ -1260,7 +1424,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
             <option value="custom">Personnalisé...</option>
           </select>
         </div>
-        <div style="flex:1;min-width:140px" id="md-custom-days-wrap" style="display:none">
+        <div style="flex:1;min-width:140px;display:none" id="md-custom-days-wrap">
           <label style="font-size:.72rem;text-transform:uppercase;color:#475569;letter-spacing:.06em;display:block;margin-bottom:6px">Jours personnalisés</label>
           <input type="number" id="md-custom-days" placeholder="ex: 60" style="background:#0A0E16;border:1px solid rgba(255,255,255,0.08);border-radius:7px;color:#E2E8F0;padding:9px 12px;font-size:.82rem;width:100%"/>
         </div>
@@ -1450,8 +1614,6 @@ let pinUnlocked = false;
 let pinUnlockTimer = null;
 
 function reqPin(section) {
-  const cfg = getConfig();
-  // If no PIN set, or already unlocked → go directly
   const m2 = Auth.current();
   if (m2) {
     const lst = getLicStatus(m2).st;
@@ -1459,6 +1621,10 @@ function reqPin(section) {
       openPaymentPage(); return;
     }
   }
+  // Safely get config — fallback to empty if no merchant
+  let cfg = {};
+  try { cfg = getConfig() || {}; } catch(e) { cfg = {}; }
+
   if (!cfg.pin || cfg.pin.length < 4 || pinUnlocked) {
     showSection(section);
     return;
@@ -1476,8 +1642,9 @@ function pinKey(k) {
   pinBuffer += k;
   updatePinDots();
   if (pinBuffer.length === 4) {
-    const cfg = getConfig();
-    if (DB._hash(pinBuffer) === cfg.pin) {
+    let cfg = {};
+    try { cfg = getConfig() || {}; } catch(e) { cfg = {}; }
+    if (cfg.pin && DB._hash(pinBuffer) === cfg.pin) {
       closeMo('mo-pin');
       pinUnlocked = true;
       clearTimeout(pinUnlockTimer);
@@ -1522,7 +1689,7 @@ function showSection(name) {
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
   document.getElementById('s-' + name)?.classList.add('active');
   document.querySelector('[data-s="' + name + '"]')?.classList.add('active');
-  const titles = {dashboard:'Dashboard',pos:'Point de Vente',products:'Produits',clients:'Clients',sales:'Ventes',settings:'Paramètres'};
+  const titles = {dashboard:'Dashboard',pos:'Point de Vente',products:'Produits',stock:'Gestion Stock',clients:'Clients',sales:'Ventes',settings:'Paramètres'};
   document.getElementById('tb-title').textContent = titles[name] || name;
   // Update expiry warning in topbar
   const curM = Auth.current();
@@ -1535,7 +1702,7 @@ function showSection(name) {
     }
   }
   document.getElementById('sidebar').classList.remove('mob-open');
-  ({dashboard:renderDashboard,pos:renderPOS,products:renderProducts,clients:renderClients,sales:renderSales,settings:renderSettings})[name]?.();
+  ({dashboard:renderDashboard,pos:renderPOS,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales,settings:renderSettings})[name]?.();
 }
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
@@ -1725,7 +1892,8 @@ function onCliSelect() {
 }
 
 function addToCart(pid) {
-  const m = Auth.current(), ps = DB.forM('products', m.id), p = ps.find(x => x.id === pid); if (!p) return;
+  const m = Auth.current(); if (!m) return;
+  const ps = DB.forM('products', m.id), p = ps.find(x => x.id === pid); if (!p) return;
   const ex = cart.find(i => i.pid === pid);
   ex ? ex.qty++ : cart.push({pid, nom:p.nom, prix:p.prix, qty:1});
   renderCart();
@@ -1735,7 +1903,8 @@ function rmFromCart(pid) { cart = cart.filter(i => i.pid !== pid); renderCart();
 function clearCart() { cart = []; renderCart(); }
 function cartTotal() { return cart.reduce((s, i) => s + i.prix * i.qty, 0); }
 function renderCart() {
-  const cfg = getConfig(), dev = cfg.devise || 'FCFA', tot = cartTotal();
+  let cfg = {}; try { cfg = getConfig() || {}; } catch(e) {}
+  const dev = cfg.devise || 'FCFA', tot = cartTotal();
   document.getElementById('cart-cnt').textContent = cart.reduce((s, i) => s + i.qty, 0);
   document.getElementById('cart-sub').textContent = fmtMoney(tot, dev);
   document.getElementById('cart-total').textContent = fmtMoney(tot, dev);
@@ -2077,8 +2246,134 @@ function fmtMoney(n, dev) {
 }
 
 
+// ---- GESTION STOCK ----
+let stkOp = 'add'; // 'add' | 'sub' | 'set'
+
+function renderStock() {
+  const m = Auth.current(); if (!m) return;
+  const prods = DB.forM('products', m.id);
+  const q = (document.getElementById('stk-srch')?.value || '').toLowerCase();
+  const flt = document.getElementById('stk-filter')?.value || '';
+  const dev = getConfig().devise || 'FCFA';
+
+  // Filter
+  let f = prods.filter(p => p.nom.toLowerCase().includes(q));
+  if (flt === 'rupture') f = f.filter(p => p.stock !== null && p.stock === 0);
+  else if (flt === 'faible') f = f.filter(p => p.stock !== null && p.stock > 0 && p.stock <= 5);
+  else if (flt === 'ok') f = f.filter(p => p.stock !== null && p.stock > 5);
+  else if (flt === 'infini') f = f.filter(p => p.stock === null);
+
+  // KPIs
+  const totalZero = prods.filter(p => p.stock !== null && p.stock === 0).length;
+  const totalLow = prods.filter(p => p.stock !== null && p.stock > 0 && p.stock <= 5).length;
+  const totalVal = prods.reduce((s, p) => s + (p.stock !== null ? p.prix * p.stock : 0), 0);
+  document.getElementById('stk-kpi-total').textContent = prods.length;
+  document.getElementById('stk-kpi-zero').textContent = totalZero;
+  document.getElementById('stk-kpi-low').textContent = totalLow;
+  document.getElementById('stk-kpi-val').textContent = fmtMoney(totalVal, dev);
+
+  document.getElementById('stk-tbody').innerHTML = f.length ? f.map(p => {
+    let statusHtml, statusOrder;
+    if (p.stock === null) {
+      statusHtml = '<span class="sbdg s-ok">∞ Illimité</span>'; statusOrder = 3;
+    } else if (p.stock === 0) {
+      statusHtml = '<span class="sbdg s-zero">⛔ Rupture</span>'; statusOrder = 0;
+    } else if (p.stock <= 5) {
+      statusHtml = '<span class="sbdg s-low">⚠️ Faible</span>'; statusOrder = 1;
+    } else {
+      statusHtml = '<span class="sbdg s-ok">✅ OK</span>'; statusOrder = 2;
+    }
+    const stockDisplay = p.stock === null ? '<span style="color:var(--text-dim)">∞</span>' : '<strong style="font-size:1.1rem;color:'+(p.stock===0?'var(--danger)':p.stock<=5?'var(--warning)':'var(--success)')+'">'+p.stock+'</strong>';
+    const valeur = p.stock !== null ? fmtMoney(p.prix * p.stock, dev) : '—';
+    return `<tr>
+      <td><strong>${p.nom}</strong></td>
+      <td><span style="font-size:.8rem;color:var(--text-dim)">${p.categorie||'—'}</span></td>
+      <td><strong style="color:var(--accent)">${fmtMoney(p.prix, dev)}</strong></td>
+      <td style="text-align:center">${stockDisplay}</td>
+      <td>${statusHtml}</td>
+      <td style="font-size:.82rem;color:var(--text-muted)">${valeur}</td>
+      <td><div class="tacts">
+        <button class="tbtn" data-stk-pid="${p.id}" title="Ajuster le stock">📦 Ajuster</button>
+        <button class="tbtn" data-edit-pid="${p.id}" title="Modifier le produit">✏️</button>
+      </div></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">Aucun produit trouvé.</td></tr>';
+
+  // Bind buttons
+  document.querySelectorAll('[data-stk-pid]').forEach(btn => {
+    btn.onclick = () => openStockAdjModal(btn.dataset.stkPid);
+  });
+  document.querySelectorAll('#stk-tbody [data-edit-pid]').forEach(btn => {
+    btn.onclick = () => { const p = DB.forM('products', m.id).find(x => x.id === btn.dataset.editPid); if (p) openProductModal(p); };
+  });
+}
+
+function openStockAdjModal(pid) {
+  const m = Auth.current(); if (!m) return;
+  const prods = DB.forM('products', m.id);
+  const sel = document.getElementById('stk-prod-sel');
+  sel.innerHTML = '<option value="">— Sélectionner un produit —</option>' +
+    prods.map(p => `<option value="${p.id}">${p.nom} (Stock: ${p.stock !== null ? p.stock : '∞'})</option>`).join('');
+  if (pid) { sel.value = pid; onStkProdChange(); }
+  stkOp = 'add';
+  document.querySelectorAll('[id^="stk-op-"]').forEach(b => b.classList.remove('active'));
+  document.getElementById('stk-op-add')?.classList.add('active');
+  document.getElementById('stk-qty-label').textContent = 'Quantité à ajouter';
+  document.getElementById('stk-qty').value = '';
+  document.getElementById('stk-reason').value = '';
+  document.getElementById('mo-stk').classList.remove('hidden');
+}
+
+function onStkProdChange() {
+  const m = Auth.current(); if (!m) return;
+  const pid = document.getElementById('stk-prod-sel').value;
+  const info = document.getElementById('stk-current-info');
+  if (!pid) { info.style.display = 'none'; return; }
+  const p = DB.forM('products', m.id).find(x => x.id === pid);
+  if (p) {
+    document.getElementById('stk-current-val').textContent = p.stock !== null ? p.stock + ' unités' : '∞ (Illimité)';
+    info.style.display = 'block';
+  }
+}
+
+function setStkOp(op, btn) {
+  stkOp = op;
+  document.querySelectorAll('[id^="stk-op-"]').forEach(b => b.classList.remove('active'));
+  btn?.classList.add('active');
+  const labels = {add:'Quantité à ajouter', sub:'Quantité à retirer', set:'Définir le stock à'};
+  document.getElementById('stk-qty-label').textContent = labels[op] || 'Quantité';
+}
+
+function applyStockAdj() {
+  const m = Auth.current(); if (!m) return;
+  const pid = document.getElementById('stk-prod-sel').value;
+  if (!pid) { showToast('⚠️ Sélectionnez un produit', 'error'); return; }
+  const qty = parseInt(document.getElementById('stk-qty').value);
+  if (isNaN(qty) || qty < 0) { showToast('⚠️ Quantité invalide', 'error'); return; }
+  const allP = DB.get('products');
+  const idx = allP.findIndex(p => p.id === pid && p.merchant_id === m.id);
+  if (idx === -1) return;
+  const p = allP[idx];
+  let newStock;
+  if (stkOp === 'set') {
+    newStock = qty;
+  } else if (stkOp === 'add') {
+    newStock = (p.stock === null ? 0 : p.stock) + qty;
+  } else { // sub
+    newStock = Math.max(0, (p.stock === null ? 0 : p.stock) - qty);
+  }
+  allP[idx].stock = newStock;
+  DB.set('products', allP);
+  const reason = document.getElementById('stk-reason').value.trim();
+  const opLabel = {add:'Entrée', sub:'Sortie', set:'Ajustement'}[stkOp];
+  showToast(`✅ ${opLabel} stock — ${p.nom} : ${newStock} unités${reason?' ('+reason+')':''}`, 'success');
+  closeMo('mo-stk');
+  renderStock();
+  renderProducts();
+}
+
 // ============================================================
-// DIGITALE SOLUTION — ADMIN SYSTEM
+// FIREBASE / CONNEXION TEMPS RÉEL
 // ============================================================
 
 // ---- ADMIN DB (separate namespace 'dsa_') ----
@@ -2152,9 +2447,9 @@ function adminSection(name){
   document.querySelectorAll('.adm-ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('as-'+name)?.classList.add('active');
   document.querySelector('[data-as="'+name+'"]')?.classList.add('active');
-  const titles={overview:'Vue d\'ensemble',merchants:'Gestion des commerces',payments:'Demandes de paiement',plans:'Plans & Tarifs',config:'Configuration',activity:'Journal d\'activité'};
+  const titles={overview:'Vue d\'ensemble',merchants:'Gestion des commerces',payments:'Demandes de paiement',plans:'Plans & Tarifs',config:'Configuration',developer:'Développeur — Firebase',activity:'Journal d\'activité'};
   document.getElementById('adm-title').textContent = titles[name]||name;
-  const renders={overview:renderAdminOverview,merchants:renderAdminMerchants,payments:renderAdminPayments,plans:renderAdminPlans,config:renderAdminConfig,activity:renderAdminActivity};
+  const renders={overview:renderAdminOverview,merchants:renderAdminMerchants,payments:renderAdminPayments,plans:renderAdminPlans,config:renderAdminConfig,developer:renderAdminDeveloper,activity:renderAdminActivity};
   renders[name]?.();
 }
 
@@ -2290,9 +2585,8 @@ function extendMerchant(){
   const base=ms[idx].licence_expiry&&new Date(ms[idx].licence_expiry)>new Date()?new Date(ms[idx].licence_expiry):new Date();
   base.setDate(base.getDate()+days);
   const planType=days>=300?'annuel':'mensuel';
-  ms[idx].licence=ms[idx].actif=true;
-  ms[idx].actif=true;
-  ms[idx].licence='active';
+  ms[idx].actif = true;
+  ms[idx].licence = 'active';
   ms[idx].licence_expiry=base.toISOString();
   ms[idx].plan_type=planType;
   DB.set('merchants',ms);
@@ -2623,14 +2917,20 @@ function renderPayPlanGrid(){
 
 function renderPayOpGrid(){
   const grid=document.getElementById('pay-op-grid');
+  const cfg=ADB.getCfg();
+  const orangeUssd = cfg.orange_ussd || '*144#';
+  const moovUssd   = cfg.moov_ussd   || '*555#';
+  const countryLabels = {bf:'Burkina Faso',ci:'Côte d\'Ivoire',sn:'Sénégal',ml:'Mali',gn:'Guinée',tg:'Togo',bj:'Bénin'};
+  const orangeCountry = countryLabels[cfg.orange_country] || 'Afrique de l\'Ouest';
+  const moovCountry   = countryLabels[cfg.moov_country]   || 'Afrique de l\'Ouest';
   grid.innerHTML=
     '<div class="op-opt '+(payState.operator==='orange'?'selected':'')+'" data-op="orange">'+
       '<div class="op-opt-ico">🟠</div>'+
-      '<div class="op-opt-info"><div class="op-opt-name">Orange Money</div><div class="op-opt-hint">*144# Burkina Faso</div></div>'+
+      '<div class="op-opt-info"><div class="op-opt-name">Orange Money</div><div class="op-opt-hint">'+orangeUssd+' · '+orangeCountry+'</div></div>'+
     '</div>'+
     '<div class="op-opt '+(payState.operator==='moov'?'selected':'')+'" data-op="moov">'+
       '<div class="op-opt-ico">🔵</div>'+
-      '<div class="op-opt-info"><div class="op-opt-name">Moov Money</div><div class="op-opt-hint">*555# Burkina Faso</div></div>'+
+      '<div class="op-opt-info"><div class="op-opt-name">Moov Money</div><div class="op-opt-hint">'+moovUssd+' · '+moovCountry+'</div></div>'+
     '</div>';
   grid.querySelectorAll('.op-opt').forEach(el=>{
     el.onclick=()=>selectOperator(el.dataset.op);
@@ -2728,8 +3028,7 @@ function submitPayment(){
 // MODIFIED FUNCTIONS — override existing ones
 // ============================================================
 
-// Override initApp to check licence and show payment page if expired
-const _origInitApp = typeof initApp === 'function' ? initApp : null;
+// initApp : charge l'interface commerce après login
 function initApp(){
   const m = Auth.current(); if(!m){showPage('page-login');return;}
   document.getElementById('sb-cname').textContent = m.nom_commerce;
@@ -2741,15 +3040,14 @@ function initApp(){
   document.getElementById('cb-ico').textContent = icons[m.type]||'🏪';
   checkLicense(m);
   showSection('pos');
-  // Check if there's a pending payment request for this merchant
+  // Notification demande paiement en attente
   const pending=ADB.getPayReqs().filter(r=>r.merchant_id===m.id&&r.statut==='pending');
   if(pending.length){
     showToast('⏳ Votre demande de paiement est en cours de vérification...','success');
   }
 }
 
-// Override showPage to handle admin routes
-const _origShowPage = showPage;
+// showPage : gère la navigation entre pages
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const target = document.getElementById(id);
@@ -2757,7 +3055,6 @@ function showPage(id){
   if(id==='page-app') initApp();
   if(id==='page-admin'){
     if(!AdminAuth.isLogged()){
-      // Redirige vers login admin sans boucle
       document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
       document.getElementById('page-admin-login')?.classList.add('active');
       setTimeout(()=>document.getElementById('adm-pwd')?.focus(),200);
@@ -2767,68 +3064,369 @@ function showPage(id){
       updatePayBadge();
     }
   }
-  if(id==='page-payment') {
+  if(id==='page-payment'){
     const theme = localStorage.getItem('ds_theme')||'dark';
     document.documentElement.setAttribute('data-theme', theme);
   }
 }
 
-// Check URL for admin token on load
-function checkAdminToken(){
-  const params=new URLSearchParams(window.location.search);
-  const token=params.get('admin');
-  const cfg=ADB.getCfg();
-  if(token&&token===cfg.token){
-    if(AdminAuth.isLogged()){
-      showPage('page-admin');
-      adminSection('overview');
-      startAdminClock();
-      updatePayBadge();
-    } else {
-      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      document.getElementById('page-admin-login')?.classList.add('active');
-    }
-  }
-}
-
-// Expose openPaymentPage on the renewal button (modify checkLicense banner)
+// renewLicense : ouvre la page de renouvellement
 function renewLicense(){
   openPaymentPage();
 }
 
-// --- FINAL INIT SUPABASE OVERRIDE ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- FIREBASE INTEGRATION ---
+// Configuration Firebase — remplacez par vos propres valeurs Firebase Console
+const FIREBASE_CONFIG = {
+  apiKey: "VOTRE_API_KEY",
+  authDomain: "VOTRE_PROJECT.firebaseapp.com",
+  projectId: "VOTRE_PROJECT_ID",
+  storageBucket: "VOTRE_PROJECT.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId: "VOTRE_APP_ID"
+};
+
+// Indicateur de mode : 'local' = localStorage uniquement, 'firebase' = Firestore actif
+let FB_MODE = 'local';
+
+// Initialisation Firebase — appelée au chargement si config présente
+function initFirebase() {
+  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY') {
+    console.info('ℹ️ Firebase non configuré — mode local activé.');
+    return;
+  }
+  // Injecter le script module Firebase via un Blob URL (évite les restrictions inline)
+  const cfg = JSON.stringify(FIREBASE_CONFIG);
+  const code = [
+    "import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';",
+    "import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, onSnapshot }",
+    "  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';",
+    "try {",
+    "  const app = initializeApp(" + cfg + ");",
+    "  const db = getFirestore(app);",
+    "  window._fbDb = db;",
+    "  window._fbLib = { collection, doc, getDocs, setDoc, deleteDoc, query, where, onSnapshot };",
+    "  window.FB_MODE = 'firebase';",
+    "  console.log('🔥 Firebase Firestore connecté');",
+    "  window.dispatchEvent(new CustomEvent('firebase-ready'));",
+    "} catch(e) { console.warn('Firebase init error:', e); }"
+  ].join('\n');
+  try {
+    const blob = new Blob([code], {type: 'application/javascript'});
+    const url  = URL.createObjectURL(blob);
+    const s    = document.createElement('script');
+    s.type     = 'module';
+    s.src      = url;
+    s.onerror  = () => console.warn('⚠️ Impossible de charger Firebase (réseau ou CORS)');
+    document.head.appendChild(s);
+  } catch(e) {
+    console.warn('⚠️ Erreur init Firebase:', e);
+  }
+}
+// initFirebase() sera appelé après loadSavedFirebaseCfg (voir plus bas)
+
+// Wrapper DB étendu pour supporter Firestore (lecture/écriture asynchrone)
+// En mode firebase, les données sont synchronisées avec Firestore en plus du localStorage.
+const FBDB = {
+  // Synchronise une collection localStorage → Firestore
+  async syncToFirestore(collection, merchantId) {
+    if (!window._fbDb || !window._fbLib) return;
+    const { collection:col, doc, setDoc } = window._fbLib;
+    const data = DB.get(collection) || [];
+    const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
+    for (const item of items) {
+      try {
+        await setDoc(doc(window._fbDb, collection, item.id || item.merchant_id || Date.now().toString()), item);
+      } catch(e) { console.warn('Firebase sync error:', e); }
+    }
+  },
+
+  // Charger depuis Firestore → localStorage
+  async loadFromFirestore(collection) {
+    if (!window._fbDb || !window._fbLib) return;
+    const { collection:col, getDocs } = window._fbLib;
+    try {
+      const snap = await getDocs(col(window._fbDb, collection));
+      const items = snap.docs.map(d => d.data());
+      if (items.length) DB.set(collection, items);
+      return items;
+    } catch(e) { console.warn('Firebase load error:', e); return []; }
+  },
+
+  // Écouter en temps réel les changements d'une collection
+  listen(collectionName, merchantId, callback) {
+    if (!window._fbDb || !window._fbLib) return null;
+    const { collection:col, query, where, onSnapshot } = window._fbLib;
+    const q = merchantId
+      ? query(col(window._fbDb, collectionName), where('merchant_id', '==', merchantId))
+      : col(window._fbDb, collectionName);
+    return onSnapshot(q, snap => {
+      const items = snap.docs.map(d => d.data());
+      // Merge avec localStorage
+      const all = DB.get(collectionName) || [];
+      const otherItems = merchantId ? all.filter(r => r.merchant_id !== merchantId) : [];
+      DB.set(collectionName, [...otherItems, ...items]);
+      callback(items);
+    });
+  }
+};
+
+// Écoute temps réel activée après connexion
+let _fbListeners = [];
+function activateFirebaseSync() {
+  if (!window._fbDb || !window._fbLib) return;
+  const m = Auth.current(); if (!m) return;
+  // Stopper les anciens listeners
+  _fbListeners.forEach(u => { try { u(); } catch(e){} });
+  _fbListeners = [];
+  // Activer les listeners temps réel
+  const col = ['products', 'sales', 'clients'];
+  col.forEach(c => {
+    const unsub = FBDB.listen(c, m.id, () => {
+      // Refresh la vue active
+      const active = document.querySelector('.section.active');
+      if (active) {
+        const sec = active.id.replace('s-', '');
+        const renderers = {dashboard:renderDashboard,pos:renderPOS,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales};
+        renderers[sec]?.();
+      }
+    });
+    if (unsub) _fbListeners.push(unsub);
+  });
+  console.log('🔥 Synchronisation Firebase temps réel activée');
+}
+
+// Déconnexion avec nettoyage Firebase listeners
+function logout() {
+  _fbListeners.forEach(u => { try { u(); } catch(e){} });
+  _fbListeners = [];
+  Auth.logout();
+  cart = [];
+  pinUnlocked = false;
+  clearTimeout(pinUnlockTimer);
+  showPage('page-landing');
+}
+
+// ---- ADMIN DEVELOPER SECTION ----
+function renderAdminDeveloper() {
+  // Statut Firebase
+  const badge = document.getElementById('adm-fb-status-badge');
+  const feedback = document.getElementById('adm-fb-feedback');
+  if (badge) {
+    if (window.FB_MODE === 'firebase' && window._fbDb) {
+      badge.textContent = '🟢 Connecté'; badge.style.color = '#2ECC71';
+    } else if (FIREBASE_CONFIG.apiKey !== 'VOTRE_API_KEY') {
+      badge.textContent = '⏳ Connexion en cours...'; badge.style.color = '#F39C12';
+    } else {
+      badge.textContent = '⚫ Non configuré'; badge.style.color = '#64748B';
+    }
+  }
+  // Pré-remplir les champs depuis config sauvegardée
+  const saved = localStorage.getItem('ds_firebase_cfg');
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      const f = id => document.getElementById(id);
+      if (f('adm-fb-projectid')) f('adm-fb-projectid').value = cfg.projectId || '';
+      if (f('adm-fb-authdomain')) f('adm-fb-authdomain').value = cfg.authDomain || '';
+      if (f('adm-fb-storagebucket')) f('adm-fb-storagebucket').value = cfg.storageBucket || '';
+      if (f('adm-fb-senderid')) f('adm-fb-senderid').value = cfg.messagingSenderId || '';
+      if (f('adm-fb-appid')) f('adm-fb-appid').value = cfg.appId || '';
+      if (f('adm-fb-apikey')) f('adm-fb-apikey').placeholder = cfg.apiKey ? '••••••••••••' : 'AIzaSy...';
+    } catch(e) {}
+  }
+  // Stats DB locales
+  const stats = document.getElementById('adm-db-stats');
+  if (stats) {
+    const counts = [
+      {label:'Commerces', key:'merchants', color:'#E8730C'},
+      {label:'Produits', key:'products', color:'#4FC3F7'},
+      {label:'Ventes', key:'sales', color:'#2ECC71'},
+      {label:'Clients', key:'clients', color:'#9B59B6'}
+    ];
+    stats.innerHTML = counts.map(c => {
+      const n = (DB.get(c.key)||[]).length;
+      return `<div style="background:#0A0E16;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:${c.color}">${n}</div>
+        <div style="font-size:.72rem;color:#475569;margin-top:4px">${c.label}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function saveAdminFirebaseConfig() {
+  const f = id => document.getElementById(id)?.value?.trim();
+  const apiKey = f('adm-fb-apikey');
+  const projectId = f('adm-fb-projectid');
+  const appId = f('adm-fb-appid');
+  if (!apiKey || !projectId) {
+    showAdminFbFeedback('⚠️ API Key et Project ID sont obligatoires.', 'error'); return;
+  }
+  const cfg = {
+    apiKey,
+    projectId,
+    authDomain: f('adm-fb-authdomain') || projectId + '.firebaseapp.com',
+    storageBucket: f('adm-fb-storagebucket') || projectId + '.appspot.com',
+    messagingSenderId: f('adm-fb-senderid') || '',
+    appId: appId || ''
+  };
+  localStorage.setItem('ds_firebase_cfg', JSON.stringify(cfg));
+  Object.assign(FIREBASE_CONFIG, cfg);
+  // Réinitialiser Firebase immédiatement
+  initFirebase();
+  showAdminFbFeedback('✅ Configuration sauvegardée. Firebase en cours de connexion...', 'success');
+  ADB.addActivity('firebase_config', 'Configuration Firebase mise à jour — Project: ' + projectId);
+  renderAdminDeveloper();
+}
+
+async function testFirebaseConnection() {
+  showAdminFbFeedback('⏳ Test de connexion...', 'info');
+  if (!window._fbDb) {
+    showAdminFbFeedback('❌ Firebase non initialisé. Sauvegardez la config et rechargez la page.', 'error'); return;
+  }
+  try {
+    const { collection, getDocs } = window._fbLib;
+    await getDocs(collection(window._fbDb, '_ping_test'));
+    showAdminFbFeedback('✅ Connexion Firebase réussie !', 'success');
+  } catch(e) {
+    showAdminFbFeedback('❌ Erreur : ' + e.message, 'error');
+  }
+}
+
+async function syncAllMerchantsToFirebase() {
+  if (!window._fbDb) {
+    showAdminFbFeedback('❌ Firebase non connecté.', 'error'); return;
+  }
+  showAdminFbFeedback('⏳ Synchronisation globale en cours...', 'info');
+  try {
+    const cols = ['merchants', 'products', 'sales', 'clients', 'configs'];
+    for (const col of cols) {
+      await FBDB.syncToFirestore(col, null);
+    }
+    showAdminFbFeedback('✅ Synchronisation complète réussie !', 'success');
+    ADB.addActivity('firebase_sync', 'Sync globale Firebase effectuée');
+  } catch(e) {
+    showAdminFbFeedback('❌ Erreur sync : ' + e.message, 'error');
+  }
+}
+
+function disconnectFirebase() {
+  if (!confirm('Déconnecter Firebase ? Les données locales seront conservées.')) return;
+  localStorage.removeItem('ds_firebase_cfg');
+  _fbListeners.forEach(u => { try { u(); } catch(e){} });
+  _fbListeners = [];
+  window.FB_MODE = 'local';
+  window._fbDb = null;
+  showAdminFbFeedback('🔌 Firebase déconnecté. Mode local activé.', 'info');
+  ADB.addActivity('firebase_disconnect', 'Firebase déconnecté');
+  renderAdminDeveloper();
+}
+
+function showAdminFbFeedback(msg, type) {
+  const el = document.getElementById('adm-fb-feedback');
+  if (!el) return;
+  const colors = {success:'#2ECC71', error:'#E74C3C', info:'#4FC3F7'};
+  el.style.color = colors[type] || '#94A3B8';
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type !== 'info') setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function copyFirebaseRules() {
+  const el = document.getElementById('fb-rules-pre');
+  if (!el) return;
+  navigator.clipboard?.writeText(el.textContent).then(() => {
+    showAdminToast('📋 Règles copiées !', 'success');
+  }).catch(() => {
+    showAdminToast('⚠️ Sélectionnez et copiez manuellement.', 'error');
+  });
+}
+
+function exportLocalDB() {
+  const data = {};
+  ['merchants','products','sales','clients','configs'].forEach(k => { data[k] = DB.get(k) || []; });
+  data['admin_config'] = ADB.getCfg();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'digitale_solution_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showAdminToast('⬇️ Export téléchargé', 'success');
+}
+
+// Fonctions Firebase propriétaire (conservées pour compatibilité interne, non exposées en UI)
+function getFirebaseStatus() {
+  if (window.FB_MODE === 'firebase' && window._fbDb) return '🔥 Connecté';
+  if (FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY') return '⚙️ Non configuré';
+  return '⏳ En cours...';
+}
+function injectFirebaseSettingsUI() {} // no-op — Firebase est dans le panel admin
+function renderFirebaseStatus() {}     // no-op
+
+// Charger config Firebase depuis localStorage au démarrage
+(function loadSavedFirebaseCfg() {
+  const saved = localStorage.getItem('ds_firebase_cfg');
+  if (!saved) return;
+  try {
+    const cfg = JSON.parse(saved);
+    if (cfg.apiKey && cfg.apiKey !== 'VOTRE_API_KEY') {
+      Object.assign(FIREBASE_CONFIG, cfg);
+    }
+  } catch(e) {}
+})();
+
+// Démarrer Firebase maintenant que la config est chargée
+initFirebase();
+
+// --- FINAL INIT ---
+document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Démarrage de Digitale Solution...');
 
-  // Appliquer le thème
+  // 1. Appliquer le thème
   const savedTheme = localStorage.getItem('ds_theme') || 'dark';
-  setTheme(savedTheme, null);
+  if (window.setTheme) setTheme(savedTheme, null);
+  else document.documentElement.setAttribute('data-theme', savedTheme);
 
-  // Routing : admin via token URL ou utilisateur normal
+  // 2. Init admin defaults
+  if (typeof ADB !== 'undefined') ADB.initDefaults();
+
+  // 3. Vérifier admin token dans URL
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get('admin');
-
   if (urlToken) {
-    const validToken = ADB.getCfg()?.token || 'DIGITALE';
+    const cfg = typeof ADB !== 'undefined' ? ADB.getCfg() : {};
+    const validToken = cfg.token || 'DIGITALE';
     if (urlToken === validToken) {
-      if (AdminAuth.isLogged()) {
+      if (typeof AdminAuth !== 'undefined' && AdminAuth.isLogged()) {
         showPage('page-admin');
+        if (typeof adminSection !== 'undefined') adminSection('overview');
+        if (typeof startAdminClock !== 'undefined') startAdminClock();
+        if (typeof updatePayBadge !== 'undefined') updatePayBadge();
       } else {
-        showPage('page-admin-login');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const pal = document.getElementById('page-admin-login');
+        if (pal) { pal.classList.add('active'); setTimeout(() => document.getElementById('adm-pwd')?.focus(), 200); }
       }
     } else {
       showPage('page-landing');
     }
-  } else {
-    const m = Auth.current();
-    if (m) {
-      showPage('page-app');
-      renderDashboard();
-    } else {
-      showPage('page-landing');
-    }
-    renderCart();
+    return;
   }
+
+  // 4. Route utilisateur normale
+  const m = typeof Auth !== 'undefined' ? Auth.current() : null;
+  if (m) {
+    showPage('page-app');
+    if (typeof renderDashboard !== 'undefined') renderDashboard();
+    // Activer la sync Firebase si disponible
+    window.addEventListener('firebase-ready', () => {
+      activateFirebaseSync();
+    });
+    activateFirebaseSync();
+  } else {
+    showPage('page-landing');
+  }
+  if (typeof renderCart !== 'undefined') renderCart();
 });
 </script>
 </body>
