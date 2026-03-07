@@ -2216,62 +2216,70 @@ async function loginMerchant(e) {
   const tel = document.getElementById('login-tel').value.trim();
   const pwd = document.getElementById('login-pwd').value;
   const btn = e.target.querySelector('button[type="submit"]');
+  const fbStatus = document.getElementById('fb-login-status');
 
-  // Désactiver le bouton pendant la tentative
   if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
 
   try {
-    // 1. Essai local d'abord
-    try {
+    // 1. Essai local — compte déjà présent sur cet appareil ?
+    const localExists = DB.get('merchants').find(m => m.telephone === tel);
+    if (localExists) {
       Auth.login(tel, pwd);
       showPage('page-app');
       return;
-    } catch(localErr) {
-      // Compte absent localement — essayer Firebase
-      if (!window._fbDb || !window._fbLib) throw localErr;
     }
 
-    // 2. Chercher le marchand dans Firestore
+    // 2. Compte absent localement — attendre Firebase (polling 300ms, max 8s)
+    if (fbStatus) fbStatus.style.display = 'block';
+    let waited = 0;
+    while ((!window._fbDb || !window._fbLib) && waited < 8000) {
+      await new Promise(r => setTimeout(r, 300));
+      waited += 300;
+    }
+    if (fbStatus) fbStatus.style.display = 'none';
+
+    if (!window._fbDb || !window._fbLib) {
+      throw new Error('Firebase non disponible. Vérifiez votre connexion internet et la configuration Firebase dans le panneau Admin.');
+    }
+
+    // 3. Chercher dans Firestore
     showToast('🔄 Recherche du compte en ligne...', 'success');
     const { collection, query, where, getDocs } = window._fbLib;
     const q = query(collection(window._fbDb, 'merchants'), where('telephone', '==', tel));
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      throw new Error('Numéro ou mot de passe incorrect.');
+      throw new Error('Compte introuvable dans Firebase. Vérifiez votre numéro.');
     }
 
-    // 3. Trouver le bon marchand (vérifier le mot de passe)
-    let foundMerchant = null;
-    snap.forEach(d => {
-      const data = d.data();
-      if (data.password === DB._hash(pwd)) foundMerchant = data;
-    });
+    // 4. Vérifier le mot de passe
+    let found = null;
+    snap.forEach(d => { const data = d.data(); if (data.password === DB._hash(pwd)) found = data; });
 
-    if (!foundMerchant) throw new Error('Numéro ou mot de passe incorrect.');
-    if (!foundMerchant.actif) throw new Error('Compte désactivé.');
+    if (!found) throw new Error('Mot de passe incorrect.');
+    if (found.actif === false) throw new Error('Compte désactivé. Contactez l\'administrateur.');
 
-    // 4. Sauvegarder localement et se connecter
+    // 5. Sauvegarder localement
     const merchants = DB.get('merchants');
-    const existing = merchants.findIndex(m => m.id === foundMerchant.id);
-    if (existing !== -1) merchants[existing] = foundMerchant;
-    else merchants.push(foundMerchant);
+    const idx = merchants.findIndex(m => m.id === found.id);
+    if (idx !== -1) merchants[idx] = found; else merchants.push(found);
     DB.set('merchants', merchants);
 
-    // 5. Charger les données du marchand depuis Firestore
+    // 6. Charger toutes les données du marchand
     showToast('🔄 Chargement de vos données...', 'success');
-    await loadMerchantDataFromFirebase(foundMerchant.id);
+    await loadMerchantDataFromFirebase(found.id);
 
-    // 6. Connecter
-    sessionStorage.setItem('ds_m', JSON.stringify(foundMerchant));
+    // 7. Ouvrir session
+    sessionStorage.setItem('ds_m', JSON.stringify(found));
     showPage('page-app');
-    showToast('✅ Connecté depuis Firebase !', 'success');
+    showToast('✅ Connecté ! Données chargées depuis Firebase.', 'success');
 
   } catch(err) {
     er.textContent = err.message;
     er.classList.remove('hidden');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Se connecter →'; }
+    if (fbStatus) fbStatus.style.display = 'none';
   }
 }
 
@@ -3217,33 +3225,46 @@ function initFirebase() {
     console.info('ℹ️ Firebase non configuré — mode local activé.');
     return;
   }
-  // Injecter le script module Firebase via un Blob URL (évite les restrictions inline)
-  const cfg = JSON.stringify(FIREBASE_CONFIG);
-  const code = [
-    "import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';",
-    "import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, query, where, onSnapshot }",
-    "  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';",
-    "try {",
-    "  const app = initializeApp(" + cfg + ");",
-    "  const db = getFirestore(app);",
-    "  window._fbDb = db;",
-    "  window._fbLib = { collection, doc, getDocs, setDoc, deleteDoc, query, where, onSnapshot };",
-    "  window.FB_MODE = 'firebase';",
-    "  console.log('🔥 Firebase Firestore connecté');",
-    "  window.dispatchEvent(new CustomEvent('firebase-ready'));",
-    "} catch(e) { console.warn('Firebase init error:', e); }"
-  ].join('\n');
-  try {
-    const blob = new Blob([code], {type: 'application/javascript'});
-    const url  = URL.createObjectURL(blob);
-    const s    = document.createElement('script');
-    s.type     = 'module';
-    s.src      = url;
-    s.onerror  = () => console.warn('⚠️ Impossible de charger Firebase (réseau ou CORS)');
-    document.head.appendChild(s);
-  } catch(e) {
-    console.warn('⚠️ Erreur init Firebase:', e);
+  // Eviter de double-initialiser
+  if (window._fbDb) return;
+
+  // Charger firebase-app puis firebase-firestore séquentiellement
+  function loadScript(src, isModule) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      if (isModule) s.type = 'module';
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
   }
+
+  // Utiliser un script module inline via importmap + esm
+  const initScript = document.createElement('script');
+  initScript.type = 'module';
+  initScript.setAttribute('data-firebase-init', '1');
+
+  const cfg = JSON.stringify(FIREBASE_CONFIG)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+
+  initScript.textContent =
+    'import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";' +
+    'import{getFirestore,collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot}' +
+    'from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";' +
+    'try{' +
+    'const app=initializeApp(' + cfg + ');' +
+    'const db=getFirestore(app);' +
+    'window._fbDb=db;' +
+    'window._fbLib={collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot};' +
+    'window.FB_MODE="firebase";' +
+    'console.log("\uD83D\uDD25 Firebase connect\u00E9");' +
+    'window.dispatchEvent(new CustomEvent("firebase-ready"));' +
+    '}catch(e){console.warn("Firebase init error:",e);}';
+
+  document.head.appendChild(initScript);
 }
 // initFirebase() sera appelé après loadSavedFirebaseCfg (voir plus bas)
 
