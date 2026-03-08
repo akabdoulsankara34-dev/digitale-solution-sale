@@ -3539,32 +3539,16 @@ const FBDB = {
   // Synchronise une collection localStorage → Firestore
   async syncToFirestore(collection, merchantId) {
     if (!window._fbDb || !window._fbLib) return;
-    const { collection:col, doc, writeBatch } = window._fbLib;
-    if (!writeBatch) {
-      // Fallback si writeBatch pas disponible
-      const { setDoc } = window._fbLib;
-      const data = DB.get(collection) || [];
-      const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
-      for (const item of items) {
-        try {
-          await setDoc(doc(window._fbDb, collection, item.id || item.merchant_id || Date.now().toString()), item);
-        } catch(e) { console.warn('Firebase sync error:', e); }
-      }
-      return;
-    }
+    const { doc, setDoc } = window._fbLib;
     const data = DB.get(collection) || [];
     const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
-    // Envoyer par batch de 400 (limite Firestore = 500)
-    const BATCH_SIZE = 400;
-    for (let i = 0; i < items.length; i += BATCH_SIZE) {
-      const batch = writeBatch(window._fbDb);
-      const chunk = items.slice(i, i + BATCH_SIZE);
-      chunk.forEach(item => {
-        const id = item.id || item.merchant_id || ('doc_' + Date.now() + '_' + Math.random().toString(36).substr(2,5));
-        batch.set(doc(window._fbDb, collection, id), item);
-      });
-      try { await batch.commit(); } catch(e) { console.warn('Batch error:', e); }
-    }
+    if (!items.length) return;
+    // Envoyer tout en parallèle (Promise.all) — pas de await séquentiel
+    const promises = items.map(item => {
+      const id = item.id || item.merchant_id || ('doc_' + Math.random().toString(36).substr(2,9));
+      return setDoc(doc(window._fbDb, collection, id), item).catch(e => console.warn('sync err:', e));
+    });
+    await Promise.all(promises);
   },
 
   // Charger depuis Firestore → localStorage
