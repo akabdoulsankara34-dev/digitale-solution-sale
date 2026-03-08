@@ -990,7 +990,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     </div>
     <div class="mftr">
       <button class="btn-g" onclick="closeMo('mo-inv')">Fermer</button>
-      <button class="btn-p" id="wa-send-btn" onclick="sendWA()" style="background:#25D366">💬 Envoyer WhatsApp</button>
+      <button class="btn-p" id="wa-send-btn" onclick="sendWA()" style="background:#25D366">💬 WhatsApp</button>
+      <button class="btn-p" id="bt-print-btn" onclick="btPrint()" style="background:#1565C0">🖨️ Bluetooth</button>
       <button class="btn-p" onclick="doPrint()">🖨️ Imprimer</button>
     </div>
   </div>
@@ -2052,6 +2053,208 @@ function doPrint() {
   document.body.className = 'print-' + fmt;
   window.print();
   setTimeout(() => { document.body.className = ''; }, 500);
+}
+
+// ============================================================
+// BLUETOOTH PRINTING — Web Bluetooth API + ESC/POS
+// ============================================================
+const BT = {
+  device: null,
+  char: null,
+  // UUID service ESC/POS standard pour imprimantes thermiques
+  SERVICE_UUID:  '000018f0-0000-1000-8000-00805f9b34fb',
+  CHAR_UUID:     '00002af1-0000-1000-8000-00805f9b34fb',
+
+  // Connexion à l'imprimante
+  async connect() {
+    if (!navigator.bluetooth) {
+      showToast('⚠️ Bluetooth non supporté. Utilisez Chrome sur Android.', 'error');
+      return false;
+    }
+    try {
+      showToast('🔍 Recherche de l\'imprimante...', 'success');
+      this.device = await navigator.bluetooth.requestDevice({
+        filters: [
+          { name: 'Printer001' },
+          { namePrefix: 'ZY' },
+          { namePrefix: 'RPP' },
+          { namePrefix: 'MTP' },
+          { namePrefix: 'Bluetooth Printer' }
+        ],
+        optionalServices: [this.SERVICE_UUID]
+      });
+      const server  = await this.device.gatt.connect();
+      const service = await server.getPrimaryService(this.SERVICE_UUID);
+      this.char     = await service.getCharacteristic(this.CHAR_UUID);
+      this.device.addEventListener('gattserverdisconnected', () => {
+        this.device = null; this.char = null;
+        showToast('🔌 Imprimante déconnectée', 'error');
+        btUpdateBtn();
+      });
+      showToast('✅ Imprimante connectée !', 'success');
+      btUpdateBtn();
+      return true;
+    } catch(e) {
+      if (e.name !== 'NotFoundError') showToast('❌ Connexion échouée : ' + e.message, 'error');
+      return false;
+    }
+  },
+
+  // Déconnexion
+  disconnect() {
+    if (this.device?.gatt?.connected) this.device.gatt.disconnect();
+    this.device = null; this.char = null;
+    btUpdateBtn();
+    showToast('🔌 Imprimante déconnectée', 'success');
+  },
+
+  // Envoyer des bytes en chunks (max 512 bytes par envoi)
+  async send(data) {
+    if (!this.char) return false;
+    const CHUNK = 512;
+    for (let i = 0; i < data.length; i += CHUNK) {
+      await this.char.writeValue(data.slice(i, i + CHUNK));
+      await new Promise(r => setTimeout(r, 50));
+    }
+    return true;
+  },
+
+  isConnected() { return !!(this.device?.gatt?.connected && this.char); }
+};
+
+// Encoder texte en bytes (UTF-8 simplifié pour ESC/POS)
+function escEncode(str) {
+  // Translitérer les caractères accentués
+  const map = {'à':'a','â':'a','ä':'a','é':'e','è':'e','ê':'e','ë':'e',
+    'î':'i','ï':'i','ô':'o','ö':'o','ù':'u','û':'u','ü':'u','ç':'c',
+    'À':'A','Â':'A','É':'E','È':'E','Ê':'E','Î':'I','Ô':'O','Ù':'U','Û':'U','Ç':'C'};
+  str = str.replace(/[àâäéèêëîïôöùûüçÀÂÉÈÊÎÔÙÛÇ]/g, c => map[c] || c);
+  const bytes = [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    bytes.push(c < 256 ? c : 63); // '?' pour chars inconnus
+  }
+  return bytes;
+}
+
+// Construire les commandes ESC/POS pour le reçu
+function buildEscPos(sale, m, cfg) {
+  const dev = cfg?.devise || sale.devise || 'FCFA';
+  const num = 'DS-' + sale.id.substr(-8).toUpperCase();
+  const date = new Date(sale.created_at).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const W = 48; // largeur 80mm ≈ 48 chars
+
+  function line(txt) { return [...escEncode(txt.substring(0, W)), 0x0A]; }
+  function center(txt) {
+    const pad = Math.max(0, Math.floor((W - txt.length) / 2));
+    return line(' '.repeat(pad) + txt);
+  }
+  function right(left, right) {
+    const pad = Math.max(1, W - left.length - right.length);
+    return line(left + ' '.repeat(pad) + right);
+  }
+  function separator() { return line('-'.repeat(W)); }
+
+  const ESC = 0x1B, GS = 0x1D;
+  const cmd = [];
+
+  // Init + charset
+  cmd.push(ESC, 0x40);           // ESC @ — reset
+  cmd.push(ESC, 0x74, 0x10);    // charset PC437
+
+  // En-tête — nom commerce en GRAS + GRAND
+  cmd.push(ESC, 0x61, 0x01);    // centrer
+  cmd.push(GS,  0x21, 0x11);    // double taille
+  cmd.push(...escEncode(m.nom_commerce), 0x0A);
+  cmd.push(GS,  0x21, 0x00);    // taille normale
+  cmd.push(...center(m.proprietaire + ' - ' + m.ville));
+  cmd.push(...center('Tel: ' + m.telephone));
+  cmd.push(...separator());
+
+  // Infos facture
+  cmd.push(ESC, 0x61, 0x00);    // gauche
+  cmd.push(...line('Facture : ' + num));
+  cmd.push(...line('Date    : ' + date));
+  cmd.push(...line('Client  : ' + (sale.client_nom || 'Client')));
+  cmd.push(...separator());
+
+  // En-tête tableau
+  cmd.push(ESC, 0x45, 0x01);    // gras ON
+  cmd.push(...right('ARTICLE  QTE', 'TOTAL'));
+  cmd.push(ESC, 0x45, 0x00);    // gras OFF
+  cmd.push(...separator());
+
+  // Articles
+  (sale.items || []).forEach(item => {
+    const nomTronc = item.nom.substring(0, 22);
+    const qteStr  = 'x' + item.qty;
+    const totStr  = fmtMoney(item.prix * item.qty, dev);
+    cmd.push(...right(nomTronc + ' ' + qteStr, totStr));
+    // Prix unitaire si qty > 1
+    if (item.qty > 1) {
+      cmd.push(...line('  ' + fmtMoney(item.prix, dev) + '/u'));
+    }
+  });
+
+  cmd.push(...separator());
+
+  // Total en GRAS + GRAND
+  cmd.push(ESC, 0x61, 0x01);    // centrer
+  cmd.push(GS,  0x21, 0x11);    // double taille
+  cmd.push(...escEncode('TOTAL: ' + fmtMoney(sale.total, dev)), 0x0A);
+  cmd.push(GS,  0x21, 0x00);    // normal
+
+  // Pied de page
+  cmd.push(...separator());
+  cmd.push(...center('Merci pour votre achat !'));
+  cmd.push(...center('Digitale Solution'));
+  cmd.push(0x0A, 0x0A, 0x0A);   // 3 lignes vides avant découpe
+
+  // Découpe papier
+  cmd.push(GS, 0x56, 0x42, 0x00); // coupe partielle
+
+  return new Uint8Array(cmd);
+}
+
+// Mettre à jour le bouton Bluetooth
+function btUpdateBtn() {
+  const btn = document.getElementById('bt-print-btn');
+  if (!btn) return;
+  if (BT.isConnected()) {
+    btn.textContent = '🖨️ BT: Imprimer';
+    btn.style.background = '#2E7D32';
+  } else {
+    btn.textContent = '🖨️ Bluetooth';
+    btn.style.background = '#1565C0';
+  }
+}
+
+// Imprimer via Bluetooth
+async function btPrint() {
+  const btn = document.getElementById('bt-print-btn');
+
+  // Si pas connecté → connecter d'abord
+  if (!BT.isConnected()) {
+    const ok = await BT.connect();
+    if (!ok) return;
+  }
+
+  // Récupérer la vente actuelle
+  const lastSale = window._lastSale;
+  if (!lastSale) { showToast('⚠️ Aucune facture à imprimer', 'error'); return; }
+
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Impression...'; }
+    const data = buildEscPos(lastSale.sale, lastSale.m, lastSale.cfg);
+    const ok = await BT.send(data);
+    if (ok) showToast('✅ Reçu imprimé !', 'success');
+    else showToast('❌ Erreur d\'impression', 'error');
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+  } finally {
+    btUpdateBtn();
+    if (btn) btn.disabled = false;
+  }
 }
 
 function viewSaleInvoice(sid) {
