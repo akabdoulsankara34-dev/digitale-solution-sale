@@ -2061,46 +2061,98 @@ function doPrint() {
 const BT = {
   device: null,
   char: null,
-  // UUID service ESC/POS standard pour imprimantes thermiques
-  SERVICE_UUID:  '000018f0-0000-1000-8000-00805f9b34fb',
-  CHAR_UUID:     '00002af1-0000-1000-8000-00805f9b34fb',
 
-  // Connexion à l'imprimante
+  // UUIDs connus pour imprimantes thermiques (essayés dans l'ordre)
+  PROFILES: [
+    { service: '000018f0-0000-1000-8000-00805f9b34fb', char: '00002af1-0000-1000-8000-00805f9b34fb' }, // ZYPrinter / RPP
+    { service: '49535343-fe7d-4ae5-8fa9-9fafd205e455', char: '49535343-8841-43f4-a8d4-ecbe34729bb3' }, // Microchip RN
+    { service: '000018f0-0000-1000-8000-00805f9b34fb', char: '00002af0-0000-1000-8000-00805f9b34fb' }, // variante
+    { service: 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', char: 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f' }, // Sewoo
+    { service: '000018f0-0000-1000-8000-00805f9b34fb', char: '00002af2-0000-1000-8000-00805f9b34fb' }, // variante 2
+  ],
+
   async connect() {
     if (!navigator.bluetooth) {
-      showToast('⚠️ Bluetooth non supporté. Utilisez Chrome sur Android.', 'error');
+      showToast('⚠️ Utilisez Chrome Android — Bluetooth non supporté ici.', 'error');
       return false;
     }
     try {
-      showToast('🔍 Recherche de l\'imprimante...', 'success');
+      showToast('🔍 Sélectionnez votre imprimante...', 'success');
+
+      // Accepter tous les appareils pour éviter les problèmes de filtre
       this.device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { name: 'Printer001' },
-          { namePrefix: 'ZY' },
-          { namePrefix: 'RPP' },
-          { namePrefix: 'MTP' },
-          { namePrefix: 'Bluetooth Printer' }
-        ],
-        optionalServices: [this.SERVICE_UUID]
+        acceptAllDevices: true,
+        optionalServices: this.PROFILES.map(p => p.service)
       });
-      const server  = await this.device.gatt.connect();
-      const service = await server.getPrimaryService(this.SERVICE_UUID);
-      this.char     = await service.getCharacteristic(this.CHAR_UUID);
+
+      showToast('🔄 Connexion GATT en cours...', 'success');
+      const server = await this.device.gatt.connect();
+
+      // Essayer chaque profil jusqu'à ce qu'un marche
+      let connected = false;
+      for (const profile of this.PROFILES) {
+        try {
+          const service = await server.getPrimaryService(profile.service);
+          this.char     = await service.getCharacteristic(profile.char);
+          connected = true;
+          console.log('✅ Profil trouvé:', profile.service);
+          break;
+        } catch(e) {
+          console.log('⏭️ Profil non compatible:', profile.service);
+        }
+      }
+
+      if (!connected) {
+        // Dernier recours : lister tous les services disponibles
+        showToast('🔄 Détection du profil...', 'success');
+        try {
+          const services = await server.getPrimaryServices();
+          console.log('Services disponibles:', services.map(s => s.uuid));
+          for (const svc of services) {
+            try {
+              const chars = await svc.getCharacteristics();
+              for (const c of chars) {
+                if (c.properties.write || c.properties.writeWithoutResponse) {
+                  this.char = c;
+                  connected = true;
+                  console.log('✅ Char trouvée:', c.uuid);
+                  break;
+                }
+              }
+              if (connected) break;
+            } catch(e) {}
+          }
+        } catch(e) {}
+      }
+
+      if (!connected || !this.char) {
+        showToast('❌ Imprimante non compatible Web Bluetooth. Voir alternatives.', 'error');
+        return false;
+      }
+
       this.device.addEventListener('gattserverdisconnected', () => {
         this.device = null; this.char = null;
         showToast('🔌 Imprimante déconnectée', 'error');
         btUpdateBtn();
       });
-      showToast('✅ Imprimante connectée !', 'success');
+
+      showToast('✅ Imprimante connectée ! Prête à imprimer.', 'success');
       btUpdateBtn();
       return true;
+
     } catch(e) {
-      if (e.name !== 'NotFoundError') showToast('❌ Connexion échouée : ' + e.message, 'error');
+      if (e.name === 'NotFoundError') {
+        showToast('ℹ️ Aucun appareil sélectionné.', 'error');
+      } else if (e.name === 'SecurityError') {
+        showToast('⚠️ Site doit être en HTTPS pour Bluetooth.', 'error');
+      } else {
+        showToast('❌ ' + e.message, 'error');
+        console.error('BT error:', e);
+      }
       return false;
     }
   },
 
-  // Déconnexion
   disconnect() {
     if (this.device?.gatt?.connected) this.device.gatt.disconnect();
     this.device = null; this.char = null;
@@ -2108,13 +2160,23 @@ const BT = {
     showToast('🔌 Imprimante déconnectée', 'success');
   },
 
-  // Envoyer des bytes en chunks (max 512 bytes par envoi)
   async send(data) {
     if (!this.char) return false;
-    const CHUNK = 512;
+    const CHUNK = 200; // chunks plus petits pour stabilité
+    const useWithoutResponse = this.char.properties.writeWithoutResponse;
     for (let i = 0; i < data.length; i += CHUNK) {
-      await this.char.writeValue(data.slice(i, i + CHUNK));
-      await new Promise(r => setTimeout(r, 50));
+      const chunk = data.slice(i, i + CHUNK);
+      try {
+        if (useWithoutResponse) {
+          await this.char.writeValueWithoutResponse(chunk);
+        } else {
+          await this.char.writeValue(chunk);
+        }
+      } catch(e) {
+        // Fallback
+        try { await this.char.writeValue(chunk); } catch(e2) {}
+      }
+      await new Promise(r => setTimeout(r, 80));
     }
     return true;
   },
