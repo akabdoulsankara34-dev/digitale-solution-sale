@@ -3517,13 +3517,13 @@ function initFirebase() {
 
   initScript.textContent =
     'import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";' +
-    'import{getFirestore,collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot}' +
+    'import{getFirestore,collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot,writeBatch}' +
     'from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";' +
     'try{' +
     'const app=initializeApp(' + cfg + ');' +
     'const db=getFirestore(app);' +
     'window._fbDb=db;' +
-    'window._fbLib={collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot};' +
+    'window._fbLib={collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot,writeBatch};' +
     'window.FB_MODE="firebase";' +
     'console.log("\uD83D\uDD25 Firebase connect\u00E9");' +
     'window.dispatchEvent(new CustomEvent("firebase-ready"));' +
@@ -3539,13 +3539,31 @@ const FBDB = {
   // Synchronise une collection localStorage → Firestore
   async syncToFirestore(collection, merchantId) {
     if (!window._fbDb || !window._fbLib) return;
-    const { collection:col, doc, setDoc } = window._fbLib;
+    const { collection:col, doc, writeBatch } = window._fbLib;
+    if (!writeBatch) {
+      // Fallback si writeBatch pas disponible
+      const { setDoc } = window._fbLib;
+      const data = DB.get(collection) || [];
+      const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
+      for (const item of items) {
+        try {
+          await setDoc(doc(window._fbDb, collection, item.id || item.merchant_id || Date.now().toString()), item);
+        } catch(e) { console.warn('Firebase sync error:', e); }
+      }
+      return;
+    }
     const data = DB.get(collection) || [];
     const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
-    for (const item of items) {
-      try {
-        await setDoc(doc(window._fbDb, collection, item.id || item.merchant_id || Date.now().toString()), item);
-      } catch(e) { console.warn('Firebase sync error:', e); }
+    // Envoyer par batch de 400 (limite Firestore = 500)
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = writeBatch(window._fbDb);
+      const chunk = items.slice(i, i + BATCH_SIZE);
+      chunk.forEach(item => {
+        const id = item.id || item.merchant_id || ('doc_' + Date.now() + '_' + Math.random().toString(36).substr(2,5));
+        batch.set(doc(window._fbDb, collection, id), item);
+      });
+      try { await batch.commit(); } catch(e) { console.warn('Batch error:', e); }
     }
   },
 
@@ -3703,19 +3721,28 @@ async function testFirebaseConnection() {
 }
 
 async function syncAllMerchantsToFirebase() {
-  if (!window._fbDb) {
+  if (!window._fbDb || !window._fbLib) {
     showAdminFbFeedback('❌ Firebase non connecté.', 'error'); return;
   }
-  showAdminFbFeedback('⏳ Synchronisation globale en cours...', 'info');
+  const btn = document.querySelector('[onclick="syncAllMerchantsToFirebase()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync...'; }
+
+  const cols = ['merchants', 'products', 'sales', 'clients', 'configs'];
+  let done = 0;
   try {
-    const cols = ['merchants', 'products', 'sales', 'clients', 'configs'];
     for (const col of cols) {
+      const count = (DB.get(col) || []).length;
+      showAdminFbFeedback('⏳ Sync ' + col + ' (' + count + ' docs)...', 'info');
       await FBDB.syncToFirestore(col, null);
+      done++;
+      showAdminFbFeedback('✅ ' + done + '/' + cols.length + ' — ' + col + ' synchronisé', 'info');
     }
-    showAdminFbFeedback('✅ Synchronisation complète réussie !', 'success');
+    showAdminFbFeedback('✅ Synchronisation complète ! (' + cols.length + ' collections)', 'success');
     ADB.addActivity('firebase_sync', 'Sync globale Firebase effectuée');
   } catch(e) {
     showAdminFbFeedback('❌ Erreur sync : ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
   }
 }
 
