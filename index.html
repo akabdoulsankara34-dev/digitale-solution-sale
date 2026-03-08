@@ -3540,15 +3540,23 @@ const FBDB = {
   async syncToFirestore(collection, merchantId) {
     if (!window._fbDb || !window._fbLib) return;
     const { doc, setDoc } = window._fbLib;
+    if (!setDoc) { console.warn('setDoc non disponible'); return; }
     const data = DB.get(collection) || [];
     const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
     if (!items.length) return;
-    // Envoyer tout en parallèle (Promise.all) — pas de await séquentiel
-    const promises = items.map(item => {
+
+    // Timeout de 8 secondes par collection
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout — collection: ' + collection)), 8000)
+    );
+
+    const sync = Promise.all(items.map(item => {
       const id = item.id || item.merchant_id || ('doc_' + Math.random().toString(36).substr(2,9));
-      return setDoc(doc(window._fbDb, collection, id), item).catch(e => console.warn('sync err:', e));
-    });
-    await Promise.all(promises);
+      return setDoc(doc(window._fbDb, collection, id), item)
+        .catch(e => console.warn('sync err ' + collection + ':', e.code || e.message));
+    }));
+
+    await Promise.race([sync, timeout]);
   },
 
   // Charger depuis Firestore → localStorage
@@ -3713,21 +3721,31 @@ async function syncAllMerchantsToFirebase() {
 
   const cols = ['merchants', 'products', 'sales', 'clients', 'configs'];
   let done = 0;
-  try {
-    for (const col of cols) {
-      const count = (DB.get(col) || []).length;
-      showAdminFbFeedback('⏳ Sync ' + col + ' (' + count + ' docs)...', 'info');
+  let errors = 0;
+
+  for (const col of cols) {
+    const count = (DB.get(col) || []).length;
+    showAdminFbFeedback('⏳ ' + col + ' (' + count + ' docs)...', 'info');
+    try {
       await FBDB.syncToFirestore(col, null);
       done++;
-      showAdminFbFeedback('✅ ' + done + '/' + cols.length + ' — ' + col + ' synchronisé', 'info');
+      showAdminFbFeedback('✅ ' + done + '/' + cols.length + ' — ' + col + ' OK', 'info');
+    } catch(e) {
+      errors++;
+      console.warn('Sync error sur ' + col + ':', e.message);
+      showAdminFbFeedback('⚠️ ' + col + ' ignoré (' + e.message + ') — suite...', 'info');
     }
-    showAdminFbFeedback('✅ Synchronisation complète ! (' + cols.length + ' collections)', 'success');
-    ADB.addActivity('firebase_sync', 'Sync globale Firebase effectuée');
-  } catch(e) {
-    showAdminFbFeedback('❌ Erreur sync : ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
+    // Petite pause entre collections
+    await new Promise(r => setTimeout(r, 300));
   }
+
+  if (errors === 0) {
+    showAdminFbFeedback('✅ Synchronisation complète ! (' + done + '/' + cols.length + ')', 'success');
+  } else {
+    showAdminFbFeedback('⚠️ Sync partielle : ' + done + ' OK, ' + errors + ' erreur(s). Vérifiez la console.', 'error');
+  }
+  ADB.addActivity('firebase_sync', 'Sync Firebase : ' + done + '/' + cols.length + ' collections');
+  if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
 }
 
 function disconnectFirebase() {
