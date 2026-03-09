@@ -1,8 +1,12 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": { "maxDuration": 10 }
+  },
   "rewrites": [
-    { "source": "/sw.js",         "destination": "/sw.js" },
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/sw.js",      "destination": "/sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/(.*)",          "destination": "/index.html" }
+    { "source": "/(.*)",       "destination": "/index.html" }
   ]
 }
