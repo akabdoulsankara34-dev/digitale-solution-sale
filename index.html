@@ -802,6 +802,12 @@ window.addEventListener('load', checkApiStatus);
       <div class="mm"><div class="mm-av" id="mm-av">A</div><div class="mm-info"><span id="mm-name">—</span><span id="mm-city">—</span></div></div>
       <button class="logout-btn" onclick="logout()" title="Déconnexion">⏻</button>
     </div>
+    <!-- Bouton installation PWA permanent -->
+    <div id="pwa-sidebar-btn" style="display:none;padding:8px 12px;border-top:1px solid rgba(255,255,255,.08)">
+      <button onclick="triggerInstall()" style="width:100%;background:#E8730C;color:white;border:none;border-radius:10px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        📲 Installer l'app
+      </button>
+    </div>
   </div>
 
   <!-- MAIN -->
@@ -3341,78 +3347,70 @@ if ('serviceWorker' in navigator) {
 // ---- INSTALLATION PWA ----
 let deferredInstallPrompt = null;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+function showPwaSidebarBtn() {
+  const btn = document.getElementById('pwa-sidebar-btn');
+  if (btn && !IS_STANDALONE) btn.style.display = 'block';
+}
 
 // Android/Chrome — capturer l'événement natif
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredInstallPrompt = e;
+  showPwaSidebarBtn();
   showInstallBanner('android');
 });
 
-// iOS Safari — afficher après 3 secondes si pas encore installé
+// iOS Safari — bannière après 3s + bouton sidebar
 if (IS_IOS && !IS_STANDALONE) {
   setTimeout(() => showInstallBanner('ios'), 3000);
+  setTimeout(showPwaSidebarBtn, 1000);
 }
 
-// Android sans événement natif — afficher quand même après 5 secondes
+// Android sans événement — bouton sidebar toujours visible + bannière manuelle après 5s
 if (!IS_IOS && !IS_STANDALONE) {
+  setTimeout(showPwaSidebarBtn, 1000);
   setTimeout(() => {
     if (!deferredInstallPrompt) showInstallBanner('manual');
   }, 5000);
 }
 
+function triggerInstall() {
+  if (deferredInstallPrompt) installPWA();
+  else if (IS_IOS) showInstallBanner('ios');
+  else showInstallBanner('manual');
+}
+
 function showInstallBanner(mode) {
-  if (IS_STANDALONE) return; // déjà installée
-  if (document.getElementById('pwa-install-banner')) return;
+  if (IS_STANDALONE) return;
+  const existing = document.getElementById('pwa-install-banner');
+  if (existing) existing.remove();
 
   const banner = document.createElement('div');
   banner.id = 'pwa-install-banner';
-  banner.style.cssText = `
-    position:fixed; bottom:72px; left:12px; right:12px;
-    background:#E8730C; color:white;
-    padding:14px 16px; border-radius:14px;
-    font-size:.88rem; font-weight:600;
-    z-index:9999; display:flex; align-items:center;
-    justify-content:space-between; gap:10px;
-    box-shadow:0 4px 24px rgba(232,115,12,.5);
-    animation: slideUp .3s ease;
-  `;
+  banner.style.cssText = 'position:fixed;bottom:72px;left:12px;right:12px;background:#E8730C;color:white;padding:14px 16px;border-radius:14px;font-size:.88rem;font-weight:600;z-index:9999;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 4px 24px rgba(232,115,12,.5)';
 
-  let content = '';
   if (mode === 'ios') {
-    content = `
-      <span>📲 Installer : appuyez sur <strong>⬆️ Partager</strong> puis <strong>"Sur l'écran d'accueil"</strong></span>
-      <button onclick="dismissInstall()" style="background:rgba(255,255,255,.25);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.8rem;flex-shrink:0">✕</button>
-    `;
+    banner.innerHTML = `<span>📲 Appuyez sur <strong>⬆️ Partager</strong> puis <strong>"Sur l'écran d'accueil"</strong></span><button onclick="dismissInstall()" style="background:rgba(255,255,255,.25);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
   } else if (mode === 'android') {
-    content = `
-      <span>📲 Installer l'app sur votre téléphone</span>
-      <div style="display:flex;gap:8px;flex-shrink:0">
-        <button onclick="installPWA()" style="background:white;color:#E8730C;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700;font-size:.82rem">Installer</button>
-        <button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:6px 10px;cursor:pointer">✕</button>
-      </div>
-    `;
+    banner.innerHTML = `<span>📲 Installer l'app sur votre téléphone</span><div style="display:flex;gap:8px;flex-shrink:0"><button onclick="installPWA()" style="background:white;color:#E8730C;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700">Installer</button><button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:6px 10px;cursor:pointer">✕</button></div>`;
   } else {
-    // Manuel : pas d'événement natif
-    content = `
-      <span>📲 Ajoutez l'app : Menu ⋮ → <strong>"Ajouter à l'écran d'accueil"</strong></span>
-      <button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0">✕</button>
-    `;
+    banner.innerHTML = `<span>📲 Menu <strong>⋮</strong> en haut à droite → <strong>"Ajouter à l'écran d'accueil"</strong></span><button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
   }
 
-  banner.innerHTML = content;
   document.body.appendChild(banner);
-
-  // Auto-masquer après 12 secondes
-  setTimeout(() => dismissInstall(), 12000);
+  setTimeout(() => dismissInstall(), 15000);
 }
 
 async function installPWA() {
-  if (!deferredInstallPrompt) return;
+  if (!deferredInstallPrompt) { showInstallBanner('manual'); return; }
   deferredInstallPrompt.prompt();
   const { outcome } = await deferredInstallPrompt.userChoice;
-  if (outcome === 'accepted') showToast('✅ App installée !', 'success');
+  if (outcome === 'accepted') {
+    showToast('✅ App installée !', 'success');
+    document.getElementById('pwa-sidebar-btn')?.style && (document.getElementById('pwa-sidebar-btn').style.display = 'none');
+  }
   deferredInstallPrompt = null;
   dismissInstall();
 }
