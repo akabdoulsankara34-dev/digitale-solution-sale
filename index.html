@@ -598,6 +598,60 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 #lic-exp-warn{font-size:.78rem;padding:4px 10px;background:rgba(243,156,18,.15);color:var(--warning);border-radius:var(--rsm);display:none}
 
 </style>
+
+
+<!-- ====================== API LAYER — remplace Firebase SDK côté client ====================== -->
+<script>
+// URL de base de l'API — auto-détectée selon l'environnement
+const API_BASE = window.location.origin;
+
+// Client API simple — toutes les communications passent par /api/
+const API = {
+  async post(endpoint, body) {
+    const res = await fetch(API_BASE + '/api/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    return data;
+  },
+  async get(endpoint, params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    const url = API_BASE + '/api/' + endpoint + (qs ? '?' + qs : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    return data;
+  },
+  async admin(action, body = {}) {
+    const cfg = ADB?.getCfg?.() || {};
+    const token = cfg.admin_secret || localStorage.getItem('ds_admin_secret') || 'DIGITALE_ADMIN';
+    const res = await fetch(API_BASE + '/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ action, ...body })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    return data;
+  }
+};
+
+// Indicateur de connectivité API
+let API_ONLINE = true;
+async function checkApiStatus() {
+  try {
+    const r = await fetch(API_BASE + '/api/login', { method: 'OPTIONS' });
+    API_ONLINE = r.ok || r.status === 200 || r.status === 204;
+  } catch(e) {
+    API_ONLINE = false;
+  }
+}
+window.addEventListener('load', checkApiStatus);
+</script>
+
 <body>
 
 <!-- SVG DEFS -->
@@ -1816,19 +1870,16 @@ function saveProduct() {
   const stkVal = document.getElementById('p-stk').value;
   const rec = {nom, prix, stock: stkVal === '' ? null : parseInt(stkVal), categorie: document.getElementById('p-cat').value.trim()};
   editProdId ? DB.update('products', editProdId, rec, m.id) : DB.insert('products', rec, m.id);
-  // Sync Firebase
-  if (window._fbDb && window._fbLib) FBDB.syncToFirestore('products', m.id).catch(()=>{});
+  // Sync API
+  const item = DB.forM('products', m.id).find(p => editProdId ? p.id === editProdId : p.nom === nom && p.prix === prix);
+  if (item) API.post('sync', { merchant_id: m.id, collection: 'products', item }).catch(()=>{});
   showToast('✅ Produit ' + (editProdId ? 'mis à jour' : 'ajouté'), 'success');
   closeMo('mo-prod'); renderProducts(); renderPOS();
 }
 function deleteProduct(id) {
   const m = Auth.current(); if (!confirm('Supprimer ce produit ?')) return;
   DB.delete('products', id, m.id);
-  // Sync Firebase
-  if (window._fbDb && window._fbLib) {
-    const { doc, deleteDoc } = window._fbLib;
-    deleteDoc(doc(window._fbDb, 'products', id)).catch(()=>{});
-  }
+  API.post('sync', { merchant_id: m.id, collection: 'products', delete: id }).catch(()=>{});
   showToast('🗑️ Supprimé', 'success'); renderProducts(); renderPOS();
 }
 function renderProducts() {
@@ -1958,11 +2009,12 @@ function processCheckout() {
   const allP = DB.get('products');
   cart.forEach(ci => { const idx = allP.findIndex(p => p.id === ci.pid && p.merchant_id === m.id); if (idx !== -1 && allP[idx].stock !== null) allP[idx].stock = Math.max(0, allP[idx].stock - ci.qty); });
   DB.set('products', allP);
-  // Sync Firebase immédiatement
-  if (window._fbDb && window._fbLib) {
-    FBDB.syncToFirestore('sales', m.id).catch(()=>{});
-    FBDB.syncToFirestore('products', m.id).catch(()=>{});
-    if (cliId) FBDB.syncToFirestore('clients', m.id).catch(()=>{});
+  // Sync API — vente + stock en arrière-plan
+  API.post('sync', { merchant_id: m.id, collection: 'sales', item: sale }).catch(()=>{});
+  API.post('sync', { merchant_id: m.id, collection: 'products', items: DB.forM('products', m.id) }).catch(()=>{});
+  if (cliId) {
+    const cli = DB.forM('clients', m.id).find(c => c.id === cliId);
+    if (cli) API.post('sync', { merchant_id: m.id, collection: 'clients', item: cli }).catch(()=>{});
   }
   // Store for WA button
   currentSaleWA = cliWA;
@@ -2455,26 +2507,38 @@ function registerMerchant(e) {
   const er = document.getElementById('reg-err'); er.classList.add('hidden');
   const p = document.getElementById('reg-pwd').value, p2 = document.getElementById('reg-pwd2').value;
   if (p !== p2) { er.textContent = 'Les mots de passe ne correspondent pas.'; er.classList.remove('hidden'); return; }
-  try {
-    const m = Auth.register({
-      nom_commerce: document.getElementById('reg-nom').value.trim(),
-      proprietaire: document.getElementById('reg-proprio').value.trim(),
-      telephone: document.getElementById('reg-tel').value.trim(),
-      ville: document.getElementById('reg-ville').value.trim(),
-      password: p, type: document.getElementById('reg-type').value
-    });
-    Auth.login(m.telephone, p);
-    // Sauvegarder dans Firebase si connecté
-    if (window._fbDb && window._fbLib) {
-      FBDB.syncToFirestore('merchants', null).catch(e => console.warn('Firebase sync error:', e));
-      FBDB.syncToFirestore('configs', m.id).catch(e => console.warn('Firebase sync error:', e));
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Création...'; }
+
+  API.post('register', {
+    nom_commerce: document.getElementById('reg-nom').value.trim(),
+    proprietaire: document.getElementById('reg-proprio').value.trim(),
+    telephone:    document.getElementById('reg-tel').value.trim(),
+    ville:        document.getElementById('reg-ville').value.trim(),
+    password: p,
+    type: document.getElementById('reg-type').value
+  }).then(data => {
+    // Sauvegarder localement
+    const merchants = DB.get('merchants');
+    merchants.push(data.merchant);
+    DB.set('merchants', merchants);
+    if (data.config) {
+      const configs = DB.get('configs');
+      configs.push(data.config);
+      DB.set('configs', configs);
     }
+    sessionStorage.setItem('ds_m', JSON.stringify(data.merchant));
     showPage('page-app');
     showToast('🎉 Bienvenue sur Digitale Solution !', 'success');
-  } catch(err) { er.textContent = err.message; er.classList.remove('hidden'); }
+  }).catch(err => {
+    er.textContent = err.message;
+    er.classList.remove('hidden');
+  }).finally(() => {
+    if (btn) { btn.disabled = false; btn.textContent = 'Créer mon compte →'; }
+  });
 }
 
-// Connexion avec fallback Firebase si compte absent localement
+// Connexion via API backend
 async function loginMerchant(e) {
   e.preventDefault();
   const er = document.getElementById('login-err'); er.classList.add('hidden');
@@ -2484,60 +2548,35 @@ async function loginMerchant(e) {
   const fbStatus = document.getElementById('fb-login-status');
 
   if (btn) { btn.disabled = true; btn.textContent = 'Connexion...'; }
+  if (fbStatus) { fbStatus.textContent = '🔄 Vérification en cours...'; fbStatus.style.display = 'block'; }
 
   try {
-    // 1. Essai local — compte déjà présent sur cet appareil ?
-    const localExists = DB.get('merchants').find(m => m.telephone === tel);
-    if (localExists) {
-      Auth.login(tel, pwd);
-      showPage('page-app');
-      return;
-    }
+    // 1. Appel API login — fonctionne sur tous les navigateurs
+    const data = await API.post('login', { telephone: tel, password: pwd });
 
-    // 2. Compte absent localement — attendre Firebase (polling 300ms, max 8s)
-    if (fbStatus) fbStatus.style.display = 'block';
-    let waited = 0;
-    while ((!window._fbDb || !window._fbLib) && waited < 8000) {
-      await new Promise(r => setTimeout(r, 300));
-      waited += 300;
-    }
-    if (fbStatus) fbStatus.style.display = 'none';
+    // 2. Sauvegarder toutes les données localement
+    const { merchant, data: mData } = data;
 
-    if (!window._fbDb || !window._fbLib) {
-      throw new Error('Firebase non disponible. Vérifiez votre connexion internet et la configuration Firebase dans le panneau Admin.');
-    }
-
-    // 3. Chercher dans Firestore
-    showToast('🔄 Recherche du compte en ligne...', 'success');
-    const { collection, query, where, getDocs } = window._fbLib;
-    const q = query(collection(window._fbDb, 'merchants'), where('telephone', '==', tel));
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      throw new Error('Compte introuvable dans Firebase. Vérifiez votre numéro.');
-    }
-
-    // 4. Vérifier le mot de passe
-    let found = null;
-    snap.forEach(d => { const data = d.data(); if (data.password === DB._hash(pwd)) found = data; });
-
-    if (!found) throw new Error('Mot de passe incorrect.');
-    if (found.actif === false) throw new Error('Compte désactivé. Contactez l\'administrateur.');
-
-    // 5. Sauvegarder localement
+    // Mettre à jour merchants local
     const merchants = DB.get('merchants');
-    const idx = merchants.findIndex(m => m.id === found.id);
-    if (idx !== -1) merchants[idx] = found; else merchants.push(found);
+    const idx = merchants.findIndex(m => m.id === merchant.id);
+    if (idx !== -1) merchants[idx] = merchant; else merchants.push(merchant);
     DB.set('merchants', merchants);
 
-    // 6. Charger toutes les données du marchand
-    showToast('🔄 Chargement de vos données...', 'success');
-    await loadMerchantDataFromFirebase(found.id);
+    // Remplacer données du marchand
+    if (mData) {
+      ['products', 'sales', 'clients', 'configs'].forEach(col => {
+        if (mData[col]) {
+          const all = DB.get(col).filter(r => r.merchant_id !== merchant.id);
+          DB.set(col, [...all, ...mData[col]]);
+        }
+      });
+    }
 
-    // 7. Ouvrir session
-    sessionStorage.setItem('ds_m', JSON.stringify(found));
+    // 3. Ouvrir session
+    sessionStorage.setItem('ds_m', JSON.stringify(merchant));
     showPage('page-app');
-    showToast('✅ Connecté ! Données chargées depuis Firebase.', 'success');
+    showToast('✅ Connecté !', 'success');
 
   } catch(err) {
     er.textContent = err.message;
@@ -2736,8 +2775,8 @@ function applyStockAdj() {
   }
   allP[idx].stock = newStock;
   DB.set('products', allP);
-  // Sync Firebase
-  if (window._fbDb && window._fbLib) FBDB.syncToFirestore('products', m.id).catch(()=>{});
+  // Sync API
+  API.post('sync', { merchant_id: m.id, collection: 'products', item: allP[idx] }).catch(()=>{});
   const reason = document.getElementById('stk-reason').value.trim();
   const opLabel = {add:'Entrée', sub:'Sortie', set:'Ajustement'}[stkOp];
   showToast(`✅ ${opLabel} stock — ${p.nom} : ${newStock} unités${reason?' ('+reason+')':''}`, 'success');
@@ -3415,31 +3454,28 @@ async function initApp(){
   checkLicense(m);
   showSection('pos');
 
-  // Charger les données Firebase en arrière-plan si connecté
-  if (window._fbDb && window._fbLib) {
-    loadMerchantDataFromFirebase(m.id).then(() => {
-      // Rafraîchir la vue après chargement
+  // Charger données fraîches depuis l'API en arrière-plan
+  API.get('data', { merchant_id: m.id }).then(res => {
+    if (res.data) {
+      ['products','sales','clients','configs'].forEach(col => {
+        if (res.data[col]?.length) {
+          const all = DB.get(col).filter(r => r.merchant_id !== m.id);
+          DB.set(col, [...all, ...res.data[col]]);
+        }
+      });
+      // Rafraîchir la vue active
       const active = document.querySelector('.section.active');
       if (active) {
-        const sec = active.id.replace('s-', '');
-        const renderers = {dashboard:renderDashboard, pos:renderPOS, products:renderProducts, stock:renderStock, clients:renderClients, sales:renderSales};
+        const sec = active.id.replace('s-','');
+        const renderers = {dashboard:renderDashboard,pos:renderPOS,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales};
         renderers[sec]?.();
       }
-      // Activer la sync temps réel
-      activateFirebaseSync();
-    }).catch(e => console.warn('Erreur chargement Firebase:', e));
-  } else {
-    // Firebase pas encore prêt — attendre l'événement
-    window.addEventListener('firebase-ready', () => {
-      loadMerchantDataFromFirebase(m.id).then(() => activateFirebaseSync());
-    }, {once: true});
-  }
+    }
+  }).catch(e => console.warn('Chargement API:', e));
 
   // Notification demande paiement en attente
-  const pending=ADB.getPayReqs().filter(r=>r.merchant_id===m.id&&r.statut==='pending');
-  if(pending.length){
-    showToast('⏳ Votre demande de paiement est en cours de vérification...','success');
-  }
+  const pending = ADB.getPayReqs().filter(r=>r.merchant_id===m.id&&r.statut==='pending');
+  if(pending.length) showToast('⏳ Votre demande de paiement est en cours de vérification...','success');
 }
 
 // showPage : gère la navigation entre pages
@@ -3484,52 +3520,31 @@ const FIREBASE_CONFIG = {
 // Indicateur de mode : 'local' = localStorage uniquement, 'firebase' = Firestore actif
 let FB_MODE = 'local';
 
-// Initialisation Firebase — appelée au chargement si config présente
+// Initialisation Firebase — utilise le SDK chargé statiquement dans le <head>
 function initFirebase() {
   if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY') {
-    console.info('ℹ️ Firebase non configuré — mode local activé.');
+    console.info('ℹ️ Firebase non configuré — mode local.');
     return;
   }
-  // Eviter de double-initialiser
-  if (window._fbDb) return;
+  if (window._fbDb) return; // déjà initialisé
 
-  // Charger firebase-app puis firebase-firestore séquentiellement
-  function loadScript(src, isModule) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      if (isModule) s.type = 'module';
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
+  function tryInit() {
+    if (window._fbInit) {
+      window._fbInit(FIREBASE_CONFIG);
+    } else {
+      // SDK pas encore chargé — attendre l'événement
+      window.addEventListener('firebase-sdk-loaded', () => {
+        if (window._fbInit) window._fbInit(FIREBASE_CONFIG);
+      }, { once: true });
+    }
   }
 
-  // Utiliser un script module inline via importmap + esm
-  const initScript = document.createElement('script');
-  initScript.type = 'module';
-  initScript.setAttribute('data-firebase-init', '1');
-
-  const cfg = JSON.stringify(FIREBASE_CONFIG)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026');
-
-  initScript.textContent =
-    'import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";' +
-    'import{getFirestore,collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot,writeBatch}' +
-    'from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";' +
-    'try{' +
-    'const app=initializeApp(' + cfg + ');' +
-    'const db=getFirestore(app);' +
-    'window._fbDb=db;' +
-    'window._fbLib={collection,doc,getDocs,setDoc,deleteDoc,query,where,onSnapshot,writeBatch};' +
-    'window.FB_MODE="firebase";' +
-    'console.log("\uD83D\uDD25 Firebase connect\u00E9");' +
-    'window.dispatchEvent(new CustomEvent("firebase-ready"));' +
-    '}catch(e){console.warn("Firebase init error:",e);}';
-
-  document.head.appendChild(initScript);
+  // Si page déjà chargée, tenter immédiatement
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    tryInit();
+  } else {
+    document.addEventListener('DOMContentLoaded', tryInit, { once: true });
+  }
 }
 // initFirebase() sera appelé après loadSavedFirebaseCfg (voir plus bas)
 
@@ -3691,9 +3706,28 @@ function saveAdminFirebaseConfig() {
   };
   localStorage.setItem('ds_firebase_cfg', JSON.stringify(cfg));
   Object.assign(FIREBASE_CONFIG, cfg);
-  // Réinitialiser Firebase immédiatement
-  initFirebase();
-  showAdminFbFeedback('✅ Configuration sauvegardée. Firebase en cours de connexion...', 'success');
+
+  // Réinitialiser Firebase — forcer une nouvelle instance
+  window._fbDb = null;
+  window._fbLib = null;
+  window.FB_MODE = 'local';
+
+  if (window._fbInit) {
+    // SDK déjà chargé — initialiser directement
+    window._fbInit(FIREBASE_CONFIG);
+    showAdminFbFeedback('✅ Firebase connecté !', 'success');
+  } else {
+    // SDK pas encore chargé — attendre
+    showAdminFbFeedback('⏳ Chargement Firebase...', 'info');
+    window.addEventListener('firebase-sdk-loaded', () => {
+      if (window._fbInit) {
+        window._fbInit(FIREBASE_CONFIG);
+        showAdminFbFeedback('✅ Firebase connecté !', 'success');
+        renderAdminDeveloper();
+      }
+    }, { once: true });
+  }
+
   ADB.addActivity('firebase_config', 'Configuration Firebase mise à jour — Project: ' + projectId);
   renderAdminDeveloper();
 }
@@ -3713,39 +3747,34 @@ async function testFirebaseConnection() {
 }
 
 async function syncAllMerchantsToFirebase() {
-  if (!window._fbDb || !window._fbLib) {
-    showAdminFbFeedback('❌ Firebase non connecté.', 'error'); return;
-  }
   const btn = document.querySelector('[onclick="syncAllMerchantsToFirebase()"]');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync...'; }
+  showAdminFbFeedback('⏳ Préparation des données...', 'info');
 
-  const cols = ['merchants', 'products', 'sales', 'clients', 'configs'];
-  let done = 0;
-  let errors = 0;
+  try {
+    const data = {
+      merchants: DB.get('merchants') || [],
+      products:  DB.get('products')  || [],
+      sales:     DB.get('sales')     || [],
+      clients:   DB.get('clients')   || [],
+      configs:   DB.get('configs')   || [],
+    };
 
-  for (const col of cols) {
-    const count = (DB.get(col) || []).length;
-    showAdminFbFeedback('⏳ ' + col + ' (' + count + ' docs)...', 'info');
-    try {
-      await FBDB.syncToFirestore(col, null);
-      done++;
-      showAdminFbFeedback('✅ ' + done + '/' + cols.length + ' — ' + col + ' OK', 'info');
-    } catch(e) {
-      errors++;
-      console.warn('Sync error sur ' + col + ':', e.message);
-      showAdminFbFeedback('⚠️ ' + col + ' ignoré (' + e.message + ') — suite...', 'info');
-    }
-    // Petite pause entre collections
-    await new Promise(r => setTimeout(r, 300));
+    const total = Object.values(data).reduce((s, a) => s + a.length, 0);
+    showAdminFbFeedback('⏳ Envoi de ' + total + ' documents...', 'info');
+
+    const result = await API.admin('sync_all', { data });
+
+    const details = Object.entries(result.results || {})
+      .map(([k, v]) => k + ':' + v).join(' | ');
+    showAdminFbFeedback('✅ Sync complète ! ' + details, 'success');
+    ADB.addActivity('firebase_sync', 'Sync globale via API — ' + total + ' docs');
+
+  } catch(e) {
+    showAdminFbFeedback('❌ ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
   }
-
-  if (errors === 0) {
-    showAdminFbFeedback('✅ Synchronisation complète ! (' + done + '/' + cols.length + ')', 'success');
-  } else {
-    showAdminFbFeedback('⚠️ Sync partielle : ' + done + ' OK, ' + errors + ' erreur(s). Vérifiez la console.', 'error');
-  }
-  ADB.addActivity('firebase_sync', 'Sync Firebase : ' + done + '/' + cols.length + ' collections');
-  if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
 }
 
 function disconnectFirebase() {
@@ -3801,7 +3830,7 @@ function getFirebaseStatus() {
 function injectFirebaseSettingsUI() {} // no-op — Firebase est dans le panel admin
 function renderFirebaseStatus() {}     // no-op
 
-// Charger config Firebase depuis localStorage au démarrage
+// Charger config Firebase depuis localStorage et initialiser
 (function loadSavedFirebaseCfg() {
   const saved = localStorage.getItem('ds_firebase_cfg');
   if (!saved) return;
@@ -3813,8 +3842,18 @@ function renderFirebaseStatus() {}     // no-op
   } catch(e) {}
 })();
 
-// Démarrer Firebase maintenant que la config est chargée
-initFirebase();
+// Démarrer Firebase — le SDK est chargé statiquement dans le <head>
+// On attend que le SDK soit prêt puis on initialise
+(function startFirebase() {
+  if (FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY') return;
+  if (window._fbInit) {
+    window._fbInit(FIREBASE_CONFIG);
+  } else {
+    window.addEventListener('firebase-sdk-loaded', () => {
+      if (window._fbInit && !window._fbDb) window._fbInit(FIREBASE_CONFIG);
+    }, { once: true });
+  }
+})();
 
 // --- FINAL INIT ---
 document.addEventListener('DOMContentLoaded', async () => {
