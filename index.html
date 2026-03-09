@@ -3419,28 +3419,48 @@ function dismissInstall() {
   document.getElementById('pwa-install-banner')?.remove();
 }
 
-// Indicateur connexion réseau — détection robuste
-let _offlineCheckTimer = null;
+// ============================================================
+// DÉTECTION HORS LIGNE — compatible Service Worker
+// ============================================================
 let _isActuallyOffline = false;
+let _offlineCheckTimer = null;
 
 async function checkRealConnectivity() {
-  // Test 1 : navigator.onLine (rapide)
+  // Étape 1 : vérification rapide navigator.onLine
   if (!navigator.onLine) {
     setOfflineMode(true);
     return;
   }
-  // Test 2 : fetch réel vers l'API (fiable)
+
+  // Étape 2 : fetch réel avec cache-busting
+  // ⚠️ Le SW intercepte /api/ et retourne { offline: true } quand hors ligne
+  // → On doit LIRE la réponse pour détecter ça, pas juste catch l'exception
   try {
     const ctrl = new AbortController();
-    const timeout = setTimeout(() => ctrl.abort(), 4000);
-    await fetch(API_BASE + '/api/login', {
-      method: 'OPTIONS',
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+
+    const response = await fetch(API_BASE + '/api/login?_ping=' + Date.now(), {
+      method: 'GET',
       signal: ctrl.signal,
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
     });
-    clearTimeout(timeout);
-    setOfflineMode(false);
+    clearTimeout(tid);
+
+    // Lire le body JSON — le SW y injecte { offline: true } quand hors ligne
+    let isOffline = false;
+    try {
+      const data = await response.json();
+      // Si le SW a répondu avec son flag offline → vraiment hors ligne
+      if (data && data.offline === true) isOffline = true;
+    } catch(e) {
+      // Pas du JSON (réponse réelle du serveur) → en ligne
+    }
+
+    setOfflineMode(isOffline);
+
   } catch(e) {
+    // fetch a levé une exception (abort timeout ou erreur réseau réelle)
     setOfflineMode(true);
   }
 }
@@ -3457,31 +3477,24 @@ function setOfflineMode(offline) {
     indicator.style.display = 'flex';
   } else {
     indicator.style.display = 'none';
-    // Sync si on revient en ligne
+    // Déclencher la synchronisation au retour en ligne
     if (wasOffline) {
-      if (SW_REG?.active) SW_REG.active.postMessage({ type: 'FORCE_SYNC' });
-      if ('serviceWorker' in navigator && 'SyncManager' in window) {
-        SW_REG?.sync?.register('ds-sync-queue').catch(()=>{});
-      }
       showToast('🌐 Connexion rétablie — synchronisation en cours...', 'success');
+      if (SW_REG?.active) SW_REG.active.postMessage({ type: 'FORCE_SYNC' });
+      SW_REG?.sync?.register('ds-sync-queue').catch(() => {});
     }
   }
 }
 
 function updateOnlineStatus() {
-  // Déclenchement immédiat + vérification réelle
-  if (!navigator.onLine) {
-    setOfflineMode(true);
-  } else {
-    checkRealConnectivity();
-  }
+  checkRealConnectivity();
 }
 
-// Vérification périodique toutes les 15 secondes
+// Vérification périodique toutes les 10 secondes
 function startConnectivityPolling() {
   clearInterval(_offlineCheckTimer);
-  _offlineCheckTimer = setInterval(checkRealConnectivity, 15000);
-  checkRealConnectivity(); // vérification initiale
+  checkRealConnectivity(); // immédiat
+  _offlineCheckTimer = setInterval(checkRealConnectivity, 10000);
 }
 
 
@@ -4048,7 +4061,7 @@ function renderFirebaseStatus() {}     // no-op
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Démarrage de Digitale Solution...');
 
-  // Vérifier statut connexion
+  // Vérifier statut connexion (polling actif)
   startConnectivityPolling();
 
   // 1. Appliquer le thème

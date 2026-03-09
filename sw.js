@@ -64,14 +64,14 @@ async function networkFirstApi(request) {
         headers: { 'Content-Type': 'application/json' }
       });
     }
-    // Lecture hors ligne — retourner erreur propre
+    // Lecture hors ligne — retourner erreur propre avec flag offline
     return new Response(JSON.stringify({
       success: false,
       offline: true,
       error: 'Hors ligne. Données locales utilisées.'
     }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' }
+      status: 200, // 200 pour éviter que fetch() throw, mais offline:true signale l'état réel
+      headers: { 'Content-Type': 'application/json', 'X-Offline': '1' }
     });
   }
 }
