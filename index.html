@@ -4,6 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Digitale Solution</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#E8730C"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="DS POS"/>
+
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
 <style>
 /* ============================================================
@@ -1081,6 +1090,11 @@ window.addEventListener('load', checkApiStatus);
 
 <!-- TOAST -->
 <div id="toast" class="toast hidden"></div>
+
+<!-- Indicateur hors ligne -->
+<div id="offline-indicator" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#E74C3C;color:white;padding:8px 16px;font-size:.82rem;font-weight:600;align-items:center;justify-content:center;gap:8px;text-align:center">
+  📵 Hors ligne — Les ventes sont sauvegardées localement et seront synchronisées à la reconnexion
+</div>
 
 
 <!-- ====================== ADMIN LOGIN ====================== -->
@@ -3293,14 +3307,98 @@ function renderAdminActivity(){
 }
 function clearActivity(){if(!confirm('Vider le journal ?'))return; ADB.set('activity',[]); renderAdminActivity();}
 
-// ---- ADMIN TOAST (dark theme) ----
-function showAdminToast(msg, type){
-  showToast(msg, type); // reuse existing toast
+// ============================================================
+// PWA — Service Worker + Gestion hors ligne
+// ============================================================
+let SW_REG = null;
+let IS_ONLINE = navigator.onLine;
+
+// Enregistrer le Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      SW_REG = await navigator.serviceWorker.register('/sw.js');
+      console.log('✅ Service Worker enregistré');
+
+      // Écouter les messages du SW (sync terminée)
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data?.type === 'SYNC_COMPLETE') {
+          const { synced, pending } = event.data;
+          if (synced > 0) {
+            showToast('✅ ' + synced + ' opération(s) synchronisée(s) !', 'success');
+          }
+          if (pending > 0) {
+            showToast('⚠️ ' + pending + ' opération(s) en attente de connexion.', 'error');
+          }
+        }
+      });
+    } catch(e) {
+      console.warn('SW registration failed:', e);
+    }
+  });
 }
 
-// ============================================================
-// PAYMENT FLOW (Merchant side)
-// ============================================================
+// Bannière d'installation PWA
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Afficher bouton d'installation discret
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  // Ne pas afficher si déjà installé
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  const existing = document.getElementById('pwa-install-banner');
+  if (existing) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pwa-install-banner';
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#E8730C;color:white;padding:12px 20px;border-radius:12px;font-size:.85rem;font-weight:600;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(232,115,12,.4);cursor:pointer;white-space:nowrap';
+  banner.innerHTML = '📲 Installer l\'app sur votre téléphone <button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:6px;padding:3px 8px;cursor:pointer;margin-left:8px">✕</button>';
+  banner.onclick = e => { if (e.target.tagName !== 'BUTTON') installPWA(); };
+  document.body.appendChild(banner);
+
+  // Auto-masquer après 8 secondes
+  setTimeout(() => banner?.remove(), 8000);
+}
+
+async function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') showToast('✅ App installée !', 'success');
+  deferredInstallPrompt = null;
+  document.getElementById('pwa-install-banner')?.remove();
+}
+
+function dismissInstall() {
+  document.getElementById('pwa-install-banner')?.remove();
+}
+
+// Indicateur connexion réseau
+function updateOnlineStatus() {
+  IS_ONLINE = navigator.onLine;
+  const indicator = document.getElementById('offline-indicator');
+  if (!indicator) return;
+  if (IS_ONLINE) {
+    indicator.style.display = 'none';
+    // Forcer sync des données en attente
+    if (SW_REG?.active) SW_REG.active.postMessage({ type: 'FORCE_SYNC' });
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      SW_REG?.sync?.register('ds-sync-queue').catch(()=>{});
+    }
+  } else {
+    indicator.style.display = 'flex';
+  }
+}
+
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// ---- ADMIN TOAST ----
+function showAdminToast(msg, type){ showToast(msg, type); }
 let payState = {plan:null, operator:null, ref:null, transRef:null};
 
 function openPaymentPage(){
@@ -3858,6 +3956,9 @@ function renderFirebaseStatus() {}     // no-op
 // --- FINAL INIT ---
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Démarrage de Digitale Solution...');
+
+  // Vérifier statut connexion
+  updateOnlineStatus();
 
   // 1. Appliquer le thème
   const savedTheme = localStorage.getItem('ds_theme') || 'dark';
