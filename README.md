@@ -1,86 +1,87 @@
-# 🌐 Digitale Solution
+# Digitale Solution POS — Guide de Déploiement
 
-Plateforme de gestion de commerce pour commerçants africains.
+## Structure des fichiers
 
-## Stack
-- **Frontend** : HTML / CSS / JavaScript vanilla
-- **Backend** : Supabase (BDD + Auth)
-- **Déploiement** : Vercel via GitHub (CI/CD automatique)
+```
+/
+├── index.html          ← Application principale (corrigée)
+├── sw.js               ← Service Worker PWA (corrigé)
+├── manifest.json       ← Manifest PWA (corrigé)
+├── vercel.json         ← Configuration Vercel (corrigée)
+├── package.json        ← Dépendances Node.js
+└── api/
+    ├── _firebase.js    ← Initialisation Firebase Admin (partagée)
+    ├── login.js        ← Route POST /api/login
+    ├── register.js     ← Route POST /api/register
+    ├── sync.js         ← Route POST /api/sync
+    ├── data.js         ← Route GET /api/data
+    └── admin.js        ← Route POST /api/admin
+```
+
+⚠️ **CRITIQUE** : Les fichiers API DOIVENT être dans le dossier `api/` pour Vercel.
 
 ---
 
-## 📁 Structure du projet
+## Variables d'environnement Vercel
+
+Dans **Vercel Dashboard → Settings → Environment Variables**, ajoutez :
 
 ```
-digitale-solution/
-├── index.html                  ← Page principale (SPA)
-├── supabase_client.js          ← Init Supabase (module ES)
-├── vercel.json                 ← Config déploiement Vercel
-├── .gitignore
-├── .env.example                ← Modèle de variables d'env
-│
-└── assets/
-    ├── css/
-    │   └── main.css            ← Tous les styles (4 thèmes)
-    │
-    └── js/
-        ├── db.js               ← DB localStorage + Auth
-        ├── ui.js               ← Thème, PIN, navigation, toast
-        ├── dashboard.js        ← Dashboard & KPI
-        ├── products.js         ← Gestion produits
-        ├── clients.js          ← Gestion clients
-        ├── sales.js            ← Historique ventes
-        ├── pos.js              ← Point de vente + caisse + factures
-        ├── settings.js         ← Paramètres + compte
-        ├── admin.js            ← Panneau admin (super-admin)
-        ├── payment.js          ← Flux paiement abonnement
-        └── app.js              ← Init, routing, overrides Supabase
+FIREBASE_SERVICE_ACCOUNT = { "type": "service_account", "project_id": "...", ... }
+ADMIN_SECRET = votre_token_secret_admin
 ```
+
+Le `FIREBASE_SERVICE_ACCOUNT` est le JSON complet de votre clé de service Firebase
+(Firebase Console → Paramètres du projet → Comptes de service → Générer une nouvelle clé).
 
 ---
 
-## 🚀 Déploiement
+## Bugs corrigés
 
-### 1. Cloner & configurer
+### 🔴 PWA ne fonctionnait pas (CRITIQUE)
+1. **`<link rel="manifest">` absent** → Ajouté dans `<head>`
+2. **Service Worker non enregistré** → Script d'enregistrement ajouté
+3. **`</head>` manquant** → Corrigé
+4. **Icônes PNG inexistantes** → Remplacées par SVG data URIs
+5. **vercel.json mauvais format** → Remplacé par format `rewrites` v2
+
+### 🟡 Responsive insuffisant
+- Sidebar mobile avec overlay pour fermer
+- POS layout flex colonne sur mobile
+- Tableaux scrollables horizontalement
+- Modals bottom-sheet sur mobile
+- Touch targets min 44px
+- Safe area insets pour encoche/barre nav
+- Admin sidebar avec bouton mobile + overlay
+- Grilles adaptatives jusqu'à 380px
+- Landscape mobile optimisé pour POS
+
+### 🟢 Performance
+- `rel="preconnect"` pour Google Fonts
+- `font-display=swap` dans l'URL des fonts
+- `will-change` sur éléments animés
+- SW v2 avec timeout, stale-while-revalidate pour fonts
+- Headers Cache-Control sur Vercel
+- GPU layers CSS pour animations fluides
+
+---
+
+## Déploiement sur Vercel
+
 ```bash
-git clone https://github.com/TON_USER/digitale-solution.git
-cd digitale-solution
-cp .env.example .env
-# Remplir .env avec tes clés Supabase
-```
+# 1. Installer Vercel CLI
+npm i -g vercel
 
-### 2. Connecter à Vercel
-1. Push sur GitHub
-2. Aller sur [vercel.com](https://vercel.com) → **New Project**
-3. Importer le repo GitHub
-4. Ajouter les variables d'env :
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-5. Déployer ✅
+# 2. Déployer
+vercel --prod
 
-Chaque `git push` sur `main` déclenche un déploiement automatique.
-
----
-
-## 🔒 Sécurité Supabase
-
-Activer **Row Level Security** sur toutes les tables :
-
-```sql
-ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-
--- Chaque marchand ne voit que ses données
-CREATE POLICY "merchant_own_data" ON products
-  FOR ALL USING (auth.uid()::text = merchant_id);
+# 3. Configurer les variables d'environnement dans le dashboard Vercel
 ```
 
 ---
 
-## 🎨 Thèmes disponibles
-- `dark` (défaut)
-- `light`
-- `neon`
-- `ocean`
+## URL Admin
+
+Accès panneau admin : `https://votre-domaine.vercel.app/?admin=DIGITALE`
+
+(Changez le token dans Admin → Configuration → Sécurité)

@@ -2,20 +2,25 @@
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Digitale Solution</title>
-
-<!-- PWA -->
-<link rel="manifest" href="/manifest.json"/>
-<meta name="theme-color" content="#E8730C"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="DS POS"/>
-
+<meta name="theme-color" content="#E8730C" media="(prefers-color-scheme: dark)"/>
+<meta name="theme-color" content="#E8730C"/>
+<meta name="description" content="Point de vente pour commerçants africains — Digitale Solution"/>
+<meta name="format-detection" content="telephone=no"/>
+<title>Digitale Solution</title>
+<!-- PWA Manifest — CRITIQUE -->
+<link rel="manifest" href="/manifest.json"/>
+<!-- Preconnect pour perf -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<!-- Fonts avec display=swap pour éviter le FOIT -->
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
 <style>
-/* ============================================================
+/* ================================w.============================
    DIGITALE SOLUTION — CSS
    4 thèmes : light / dark / neon / ocean
    ============================================================ */
@@ -419,10 +424,108 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .toast.wa{border-color:rgba(37,211,102,.4);background:rgba(37,211,102,.08);color:#25D366}
 @keyframes tIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
-/* RESPONSIVE */
-@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.sett-grid{grid-template-columns:1fr}.feats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:900px){.sidebar{position:fixed;left:-100%;height:100vh;transition:left var(--tr)}.sidebar.mob-open{left:0}.mob-menu{display:flex}.lnav{padding:16px 20px}.auth-r{display:none}.auth-l{width:100%}.pos-layout{grid-template-columns:1fr;grid-template-rows:1fr auto}.pos-cart{max-height:55vh}.dash-grid{grid-template-columns:1fr}}
-@media(max-width:640px){.hero{padding:60px 20px 50px}.feats{grid-template-columns:1fr}.section{padding:16px 14px}.topbar{padding:12px 14px}.kpi-grid{grid-template-columns:1fr 1fr}.hero-cta{flex-direction:column;align-items:center}.fr{grid-template-columns:1fr}}
+/* ============================================================
+   RESPONSIVE — Mobile, Tablette, PWA safe areas
+   ============================================================ */
+:root{
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+}
+@media(display-mode:standalone){
+  .main{padding-bottom:var(--safe-bottom)}
+  .pos-cart{padding-bottom:calc(16px + var(--safe-bottom))}
+  .lnav,.adm-topbar{padding-top:calc(16px + var(--safe-top))}
+  body{-webkit-tap-highlight-color:transparent}
+}
+/* ---- 1200px ---- */
+@media(max-width:1200px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .sett-grid{grid-template-columns:1fr}
+  .feats{grid-template-columns:repeat(2,1fr)}
+}
+/* ---- 900px / Tablette ---- */
+@media(max-width:900px){
+  .sidebar{position:fixed;left:-100%;height:100vh;transition:left var(--tr);z-index:200;box-shadow:4px 0 24px rgba(0,0,0,.4)}
+  .sidebar.mob-open{left:0}
+  .mob-menu{display:flex}
+  .lnav{padding:14px 16px}
+  .nav-acts .btn-p,.nav-acts .btn-g{padding:8px 14px;font-size:.82rem}
+  .auth-r{display:none}
+  .auth-l{width:100%;padding:24px 20px}
+  .auth-li{max-width:100%;padding-top:8px}
+  .pos-layout{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 64px)}
+  .pos-cat{flex:1;min-height:0;overflow-y:auto}
+  .pos-cart{max-height:none;height:auto;border-left:none;border-top:1px solid var(--border);padding:16px}
+  .dash-grid{grid-template-columns:1fr}
+  .adm-sb{position:fixed;left:-220px;height:100vh;transition:left .2s ease;z-index:200;box-shadow:4px 0 24px rgba(0,0,0,.5)}
+  .adm-sb.mob-open{left:0}
+  .adm-kpi-grid{grid-template-columns:1fr 1fr}
+  .adm-grid2{grid-template-columns:1fr}
+  .plan-grid{grid-template-columns:1fr 1fr}
+  .merch-detail-grid{grid-template-columns:1fr}
+  .section{padding:14px}
+  .topbar{padding:12px 14px}
+}
+/* ---- 640px / Mobile ---- */
+@media(max-width:640px){
+  .hero{padding:48px 16px 36px}
+  .hero h1{font-size:clamp(1.7rem,5vw,2.2rem)}
+  .hero-stats{flex-direction:column;width:100%}
+  .hstat{padding:14px 24px}
+  .hdiv{width:100%;height:1px}
+  .hero-cta{flex-direction:column;align-items:stretch;padding:0 8px}
+  .hero-cta .btn-p,.hero-cta .btn-g{width:100%;justify-content:center}
+  .feats{grid-template-columns:1fr 1fr}
+  .section{padding:12px}
+  .topbar{padding:10px 12px}
+  .tb-r .theme-pills{display:none}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .fr{grid-template-columns:1fr}
+  .pos-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .ppc{padding:14px 10px}
+  .ppc-emo{font-size:1.8rem}
+  .ci{padding:8px 10px;gap:6px}
+  .ci-name{font-size:.82rem}
+  .tacts{flex-wrap:wrap;gap:4px}
+  .tbtn{font-size:.72rem;padding:4px 8px}
+  .mo{align-items:flex-end;padding:0}
+  .modal{border-radius:var(--rlg) var(--rlg) 0 0;max-height:92vh;overflow-y:auto}
+  #s-products table,#s-clients table,#s-sales table,#s-stock table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sett-grid{grid-template-columns:1fr}
+  .adm-kpi-grid{grid-template-columns:1fr 1fr}
+  .plan-grid,.op-grid{grid-template-columns:1fr}
+  #op-cards-preview{grid-template-columns:1fr!important}
+  .btn-p.xl{padding:14px 20px;font-size:.95rem}
+}
+/* ---- 380px ---- */
+@media(max-width:380px){
+  .feats{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:1fr}
+  .hero h1{font-size:1.5rem}
+  .pin-btn{padding:12px;font-size:1.1rem}
+}
+/* ---- Landscape mobile ---- */
+@media(max-width:900px) and (orientation:landscape){
+  .pos-layout{flex-direction:row}
+  .pos-cat{flex:1}
+  .pos-cart{width:300px;min-width:300px;max-height:100vh;overflow-y:auto;border-top:none;border-left:1px solid var(--border)}
+}
+/* ---- Touch targets min 44px ---- */
+@media(pointer:coarse){
+  .ni{min-height:44px}
+  .ci-qbtn{width:32px;height:32px}
+  .btn-p,.btn-g,.btn-d{min-height:44px}
+  .btn-p.sm,.btn-g.sm{min-height:36px}
+  .tsw-pill{width:28px;height:28px}
+  .tp{width:24px;height:24px}
+  .pin-btn{min-height:52px}
+}
+/* ---- GPU layers ---- */
+.sidebar,.toast,.mo,.modal{will-change:transform}
+.btn-p:active,.btn-g:active{transform:scale(.97)!important;transition:transform .1s}
+.ppc:active{transform:scale(.96)!important}
 
 /* ============================================================
    ADMIN PANEL CSS
@@ -431,6 +534,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 #page-admin{background:#080C14;color:#E2E8F0;font-family:'DM Sans',sans-serif;min-height:100vh;display:none;flex-direction:row}
 #page-admin.active{display:flex}
 .adm-sb{width:220px;background:#0D1117;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;flex-shrink:0}
+.adm-mob-menu{display:none;position:fixed;top:16px;left:16px;z-index:300;background:#0D1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;color:#E2E8F0;font-size:1.2rem;cursor:pointer}
 .adm-logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px}
 .adm-logo-ico{width:32px;height:32px;background:linear-gradient(135deg,#E8730C,#FF9540);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .adm-logo-text{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;color:#E2E8F0;line-height:1.2}
@@ -660,6 +764,7 @@ async function checkApiStatus() {
 }
 window.addEventListener('load', checkApiStatus);
 </script>
+</head>
 
 <body>
 
@@ -801,12 +906,6 @@ window.addEventListener('load', checkApiStatus);
     <div class="sb-foot">
       <div class="mm"><div class="mm-av" id="mm-av">A</div><div class="mm-info"><span id="mm-name">—</span><span id="mm-city">—</span></div></div>
       <button class="logout-btn" onclick="logout()" title="Déconnexion">⏻</button>
-    </div>
-    <!-- Bouton installation PWA permanent -->
-    <div id="pwa-sidebar-btn" style="display:none;padding:8px 12px;border-top:1px solid rgba(255,255,255,.08)">
-      <button onclick="triggerInstall()" style="width:100%;background:#E8730C;color:white;border:none;border-radius:10px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-        📲 Installer l'app
-      </button>
     </div>
   </div>
 
@@ -1097,11 +1196,6 @@ window.addEventListener('load', checkApiStatus);
 <!-- TOAST -->
 <div id="toast" class="toast hidden"></div>
 
-<!-- Indicateur hors ligne -->
-<div id="offline-indicator" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#E74C3C;color:white;padding:12px 16px;font-size:.85rem;font-weight:600;align-items:center;justify-content:center;gap:8px;text-align:center;box-shadow:0 -4px 20px rgba(231,76,60,.5);">
-  📵 Hors ligne — Les ventes sont sauvegardées localement et seront synchronisées à la reconnexion
-</div>
-
 
 <!-- ====================== ADMIN LOGIN ====================== -->
 <div id="page-admin-login" class="page">
@@ -1143,6 +1237,8 @@ window.addEventListener('load', checkApiStatus);
     </div>
   </div>
 
+  <!-- Admin Mobile Menu Button -->
+  <button class="adm-mob-menu" onclick="toggleAdminSidebar()" aria-label="Menu admin">☰</button>
   <!-- MAIN -->
   <div class="adm-main">
     <div class="adm-topbar">
@@ -3313,196 +3409,14 @@ function renderAdminActivity(){
 }
 function clearActivity(){if(!confirm('Vider le journal ?'))return; ADB.set('activity',[]); renderAdminActivity();}
 
-// ============================================================
-// PWA — Service Worker + Gestion hors ligne
-// ============================================================
-let SW_REG = null;
-let IS_ONLINE = navigator.onLine;
-
-// Enregistrer le Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      SW_REG = await navigator.serviceWorker.register('/sw.js');
-      console.log('✅ Service Worker enregistré');
-
-      // Écouter les messages du SW (sync terminée)
-      navigator.serviceWorker.addEventListener('message', event => {
-        if (event.data?.type === 'SYNC_COMPLETE') {
-          const { synced, pending } = event.data;
-          if (synced > 0) {
-            showToast('✅ ' + synced + ' opération(s) synchronisée(s) !', 'success');
-          }
-          if (pending > 0) {
-            showToast('⚠️ ' + pending + ' opération(s) en attente de connexion.', 'error');
-          }
-        }
-      });
-    } catch(e) {
-      console.warn('SW registration failed:', e);
-    }
-  });
-}
-
-// ---- INSTALLATION PWA ----
-let deferredInstallPrompt = null;
-const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-function showPwaSidebarBtn() {
-  const btn = document.getElementById('pwa-sidebar-btn');
-  if (btn && !IS_STANDALONE) btn.style.display = 'block';
-}
-
-// Android/Chrome — capturer l'événement natif
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  showPwaSidebarBtn();
-  showInstallBanner('android');
-});
-
-// iOS Safari — bannière après 3s + bouton sidebar
-if (IS_IOS && !IS_STANDALONE) {
-  setTimeout(() => showInstallBanner('ios'), 3000);
-  setTimeout(showPwaSidebarBtn, 1000);
-}
-
-// Android sans événement — bouton sidebar toujours visible + bannière manuelle après 5s
-if (!IS_IOS && !IS_STANDALONE) {
-  setTimeout(showPwaSidebarBtn, 1000);
-  setTimeout(() => {
-    if (!deferredInstallPrompt) showInstallBanner('manual');
-  }, 5000);
-}
-
-function triggerInstall() {
-  if (deferredInstallPrompt) installPWA();
-  else if (IS_IOS) showInstallBanner('ios');
-  else showInstallBanner('manual');
-}
-
-function showInstallBanner(mode) {
-  if (IS_STANDALONE) return;
-  const existing = document.getElementById('pwa-install-banner');
-  if (existing) existing.remove();
-
-  const banner = document.createElement('div');
-  banner.id = 'pwa-install-banner';
-  banner.style.cssText = 'position:fixed;bottom:72px;left:12px;right:12px;background:#E8730C;color:white;padding:14px 16px;border-radius:14px;font-size:.88rem;font-weight:600;z-index:9999;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 4px 24px rgba(232,115,12,.5)';
-
-  if (mode === 'ios') {
-    banner.innerHTML = `<span>📲 Appuyez sur <strong>⬆️ Partager</strong> puis <strong>"Sur l'écran d'accueil"</strong></span><button onclick="dismissInstall()" style="background:rgba(255,255,255,.25);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
-  } else if (mode === 'android') {
-    banner.innerHTML = `<span>📲 Installer l'app sur votre téléphone</span><div style="display:flex;gap:8px;flex-shrink:0"><button onclick="installPWA()" style="background:white;color:#E8730C;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:700">Installer</button><button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:6px 10px;cursor:pointer">✕</button></div>`;
-  } else {
-    banner.innerHTML = `<span>📲 Menu <strong>⋮</strong> en haut à droite → <strong>"Ajouter à l'écran d'accueil"</strong></span><button onclick="dismissInstall()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:8px;padding:4px 10px;cursor:pointer;flex-shrink:0">✕</button>`;
-  }
-
-  document.body.appendChild(banner);
-  setTimeout(() => dismissInstall(), 15000);
-}
-
-async function installPWA() {
-  if (!deferredInstallPrompt) { showInstallBanner('manual'); return; }
-  deferredInstallPrompt.prompt();
-  const { outcome } = await deferredInstallPrompt.userChoice;
-  if (outcome === 'accepted') {
-    showToast('✅ App installée !', 'success');
-    document.getElementById('pwa-sidebar-btn')?.style && (document.getElementById('pwa-sidebar-btn').style.display = 'none');
-  }
-  deferredInstallPrompt = null;
-  dismissInstall();
-}
-
-function dismissInstall() {
-  document.getElementById('pwa-install-banner')?.remove();
+// ---- ADMIN TOAST (dark theme) ----
+function showAdminToast(msg, type){
+  showToast(msg, type); // reuse existing toast
 }
 
 // ============================================================
-// DÉTECTION HORS LIGNE — compatible Service Worker
+// PAYMENT FLOW (Merchant side)
 // ============================================================
-let _isActuallyOffline = false;
-let _offlineCheckTimer = null;
-
-async function checkRealConnectivity() {
-  // Étape 1 : vérification rapide navigator.onLine
-  if (!navigator.onLine) {
-    setOfflineMode(true);
-    return;
-  }
-
-  // Étape 2 : fetch réel avec cache-busting
-  // ⚠️ Le SW intercepte /api/ et retourne { offline: true } quand hors ligne
-  // → On doit LIRE la réponse pour détecter ça, pas juste catch l'exception
-  try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5000);
-
-    const response = await fetch(API_BASE + '/api/login?_ping=' + Date.now(), {
-      method: 'GET',
-      signal: ctrl.signal,
-      cache: 'no-store',
-      headers: { 'Accept': 'application/json' }
-    });
-    clearTimeout(tid);
-
-    // Lire le body JSON — le SW y injecte { offline: true } quand hors ligne
-    let isOffline = false;
-    try {
-      const data = await response.json();
-      // Si le SW a répondu avec son flag offline → vraiment hors ligne
-      if (data && data.offline === true) isOffline = true;
-    } catch(e) {
-      // Pas du JSON (réponse réelle du serveur) → en ligne
-    }
-
-    setOfflineMode(isOffline);
-
-  } catch(e) {
-    // fetch a levé une exception (abort timeout ou erreur réseau réelle)
-    setOfflineMode(true);
-  }
-}
-
-function setOfflineMode(offline) {
-  const wasOffline = _isActuallyOffline;
-  _isActuallyOffline = offline;
-  IS_ONLINE = !offline;
-
-  const indicator = document.getElementById('offline-indicator');
-  if (!indicator) return;
-
-  if (offline) {
-    indicator.style.display = 'flex';
-  } else {
-    indicator.style.display = 'none';
-    // Déclencher la synchronisation au retour en ligne
-    if (wasOffline) {
-      showToast('🌐 Connexion rétablie — synchronisation en cours...', 'success');
-      if (SW_REG?.active) SW_REG.active.postMessage({ type: 'FORCE_SYNC' });
-      SW_REG?.sync?.register('ds-sync-queue').catch(() => {});
-    }
-  }
-}
-
-function updateOnlineStatus() {
-  checkRealConnectivity();
-}
-
-// Vérification périodique toutes les 10 secondes
-function startConnectivityPolling() {
-  clearInterval(_offlineCheckTimer);
-  checkRealConnectivity(); // immédiat
-  _offlineCheckTimer = setInterval(checkRealConnectivity, 10000);
-}
-
-
-window.addEventListener('online',  updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-
-// ---- ADMIN TOAST ----
-function showAdminToast(msg, type){ showToast(msg, type); }
 let payState = {plan:null, operator:null, ref:null, transRef:null};
 
 function openPaymentPage(){
@@ -4061,9 +3975,6 @@ function renderFirebaseStatus() {}     // no-op
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Démarrage de Digitale Solution...');
 
-  // Vérifier statut connexion (polling actif)
-  startConnectivityPolling();
-
   // 1. Appliquer le thème
   const savedTheme = localStorage.getItem('ds_theme') || 'dark';
   if (window.setTheme) setTheme(savedTheme, null);
@@ -4109,6 +4020,93 @@ document.addEventListener('DOMContentLoaded', async () => {
     showPage('page-landing');
   }
   if (typeof renderCart !== 'undefined') renderCart();
+});
+</script>
+<script>
+// ============================================================
+// PWA — Service Worker + Install Prompt
+// ============================================================
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => {
+        console.log('✅ SW enregistré:', reg.scope);
+        // Vérifier les mises à jour
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nouvelle version disponible
+              showToast('🔄 Mise à jour disponible — rechargez la page', 'success');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW echec:', err));
+    // Écouter les messages du SW
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data?.type === 'SYNC_COMPLETE') {
+        if (event.data.synced > 0) showToast('☁️ ' + event.data.synced + ' opération(s) synchronisée(s)', 'success');
+      }
+    });
+  });
+})();
+
+// Admin sidebar mobile toggle
+function toggleAdminSidebar() {
+  const sb = document.querySelector('.adm-sb');
+  if (!sb) return;
+  sb.classList.toggle('mob-open');
+  // Overlay pour fermer
+  const existing = document.getElementById('adm-overlay');
+  if (sb.classList.contains('mob-open') && !existing) {
+    const ov = document.createElement('div');
+    ov.id = 'adm-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;';
+    ov.onclick = () => { sb.classList.remove('mob-open'); ov.remove(); };
+    document.body.appendChild(ov);
+  } else {
+    existing?.remove();
+  }
+}
+
+// PWA Install Prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Afficher une suggestion d'installation si on est sur la landing
+  setTimeout(() => {
+    const landing = document.getElementById('page-landing');
+    if (landing && landing.classList.contains('active') && !localStorage.getItem('ds_pwa_dismissed')) {
+      const banner = document.createElement('div');
+      banner.id = 'pwa-banner';
+      banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border-accent);border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:var(--shadow-a);max-width:calc(100vw - 40px);animation:tIn .3s ease';
+      banner.innerHTML = '<span style="font-size:1.4rem">📱</span><div><strong style="font-size:.88rem">Installer l'app</strong><br/><span style="font-size:.75rem;color:var(--text-muted)">Accès rapide depuis votre écran d'accueil</span></div><button onclick="installPWA()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 16px;font-weight:600;font-size:.82rem;cursor:pointer;white-space:nowrap">Installer</button><button onclick="dismissPWA()" style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px">✕</button>';
+      document.body.appendChild(banner);
+    }
+  }, 3000);
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(choice => {
+    if (choice.outcome === 'accepted') showToast('🎉 App installée !', 'success');
+    deferredPrompt = null;
+    dismissPWA();
+  });
+}
+
+function dismissPWA() {
+  localStorage.setItem('ds_pwa_dismissed', '1');
+  document.getElementById('pwa-banner')?.remove();
+}
+
+window.addEventListener('appinstalled', () => {
+  showToast('✅ Digitale Solution installée sur votre appareil !', 'success');
+  deferredPrompt = null;
 });
 </script>
 </body>
