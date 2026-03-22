@@ -2,22 +2,26 @@
 <html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Digitale Solution</title>
+
+<!-- ====================== PWA META TAGS ====================== -->
+<meta name="description" content="Point de vente pour commerçants africains — gérez ventes, clients et stock même hors ligne"/>
+<meta name="theme-color" content="#E8730C"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="DS POS"/>
-<meta name="theme-color" content="#E8730C" media="(prefers-color-scheme: dark)"/>
-<meta name="theme-color" content="#E8730C"/>
-<meta name="description" content="Point de vente pour commerçants africains — Digitale Solution"/>
-<meta name="format-detection" content="telephone=no"/>
-<title>Digitale Solution</title>
-<!-- PWA Manifest — CRITIQUE -->
+<meta name="application-name" content="Digitale Solution POS"/>
+<meta name="msapplication-TileColor" content="#E8730C"/>
+
+<!-- Manifest PWA -->
 <link rel="manifest" href="/manifest.json"/>
-<!-- Preconnect pour perf -->
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<!-- Fonts avec display=swap pour éviter le FOIT -->
+
+<!-- Icônes Apple Touch -->
+<link rel="apple-touch-icon" href="/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
 <style>
 /* ================================w.============================
@@ -282,6 +286,25 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .cart-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .cart-hdr h3{font-size:1rem;font-weight:700}
 .bdg{background:var(--accent);color:white;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:100px;margin-left:6px}
+
+/* ── Notifications stock ─────────────────────── */
+.ni-notif-dot{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid var(--bg);animation:pulse-dot 1.6s infinite}
+@keyframes pulse-dot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.7}}
+.ni{position:relative} /* needed for absolute dot */
+.notif-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
+.notif-panel-hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.notif-panel-hdr h4{font-size:.85rem;font-weight:700;display:flex;align-items:center;gap:8px;margin:0}
+.notif-panel-hdr .bdg-notif{background:var(--danger);color:white;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:100px}
+.notif-empty{padding:20px;text-align:center;color:var(--text-muted);font-size:.82rem}
+.notif-item{display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);transition:background .15s;font-size:.82rem}
+.notif-item:last-child{border-bottom:none}
+.notif-item.unread{background:rgba(232,115,12,.04);border-left:3px solid var(--accent)}
+.notif-item.read{opacity:.65}
+.notif-ico{font-size:1.1rem;margin-top:1px;flex-shrink:0}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notif-sub{color:var(--text-muted);font-size:.75rem;margin-top:2px}
+.notif-time{font-size:.7rem;color:var(--text-muted);flex-shrink:0;white-space:nowrap;margin-top:2px}
 .cart-list{flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm);margin-bottom:12px;min-height:120px}
 .ci{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}
 .ci:last-child{border-bottom:none}
@@ -293,19 +316,54 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .ci-price{font-family:var(--fh);font-weight:700;color:var(--accent);font-size:.88rem;min-width:70px;text-align:right}
 .ci-rm{color:var(--text-dim);font-size:1rem;padding:4px;transition:color var(--tr)}
 .ci-rm:hover{color:var(--danger)}
-/* Client WhatsApp section */
-.cart-client-area{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:12px}
-.cart-client-area label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:8px}
+/* Client WhatsApp section — collapsible */
+.cart-client-area{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);margin-bottom:12px;overflow:hidden;transition:all .2s}
+.cart-client-area.collapsed .cart-client-body{display:none}
+.cart-client-header{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;cursor:pointer;user-select:none;transition:background .15s}
+.cart-client-header:hover{background:var(--surface2)}
+.cart-client-header label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;margin:0;cursor:pointer;display:flex;align-items:center;gap:6px}
+.cart-client-toggle{font-size:.75rem;color:var(--text-muted);transition:transform .2s;padding:2px 6px;border-radius:4px;background:var(--surface2);border:1px solid var(--border)}
+.collapsed .cart-client-toggle{transform:rotate(-90deg)}
+.cart-client-body{padding:0 12px 12px;padding-top:4px}
 .cart-client-area input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:8px 10px;font-size:.85rem;margin-bottom:6px}
 .cart-client-area input:focus{outline:none;border-color:var(--accent)}
 .cart-client-area select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:8px 10px;font-size:.85rem}
 .wa-hint{font-size:.72rem;color:var(--success);display:flex;align-items:center;gap:4px;margin-top:4px}
+/* Indicateur client rempli dans le header */
+.cli-preview{font-size:.75rem;color:var(--accent);font-weight:600;font-family:var(--fh);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .cart-tot{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:12px}
 .ct-row{display:flex;justify-content:space-between;font-size:.85rem;color:var(--text-muted);padding:3px 0}
 .ct-row.big{font-size:1.1rem;font-weight:700;color:var(--text);padding-top:10px;border-top:1px solid var(--border);margin-top:6px}
 
 /* TABLES */
 .stbar{display:flex;gap:12px;margin-bottom:20px;align-items:center}
+/* ── Annulations ────────────────────────────── */
+.sale-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.sale-tab{padding:6px 14px;border-radius:100px;border:1px solid var(--border);font-size:.78rem;font-weight:600;cursor:pointer;transition:all var(--tr);color:var(--text-muted);background:var(--surface)}
+.sale-tab.active{background:var(--accent);color:white;border-color:var(--accent)}
+.sale-tab.tab-cancelled.active{background:var(--danger);border-color:var(--danger)}
+.sale-row-cancelled td{opacity:.55;text-decoration:line-through}
+.sale-row-cancelled td:last-child{opacity:1;text-decoration:none}
+.cancel-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(231,76,60,.12);color:var(--danger);border:1px solid rgba(231,76,60,.25);border-radius:100px;font-size:.68rem;font-weight:700;padding:2px 8px}
+.cancel-reason-chip{font-size:.7rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 7px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block}
+/* Modal annulation */
+.cancel-motifs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.cancel-motif-btn{padding:10px 12px;border-radius:var(--rsm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.8rem;cursor:pointer;transition:all var(--tr);text-align:left;display:flex;align-items:center;gap:7px}
+.cancel-motif-btn:hover,.cancel-motif-btn.selected{border-color:var(--danger);background:rgba(231,76,60,.07);color:var(--danger)}
+.cancel-motif-btn.selected{font-weight:700}
+/* Stats annulations dans dashboard */
+.cancel-stat-card{background:var(--bg);border:1px solid rgba(231,76,60,.2);border-radius:var(--r);padding:16px;margin-bottom:20px}
+.cancel-stat-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.cancel-stat-hdr h4{font-size:.85rem;font-weight:700;margin:0;display:flex;align-items:center;gap:6px}
+.cancel-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.cancel-kpi{background:var(--surface);border-radius:var(--rsm);padding:10px;text-align:center}
+.cancel-kpi-val{font-size:1.3rem;font-weight:800;font-family:var(--fh);color:var(--danger)}
+.cancel-kpi-lbl{font-size:.68rem;color:var(--text-muted);margin-top:2px}
+.motif-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.78rem}
+.motif-bar-track{flex:1;background:var(--surface2);border-radius:100px;height:6px;overflow:hidden}
+.motif-bar-fill{height:100%;border-radius:100px;background:var(--danger);transition:width .4s ease}
+.motif-bar-label{color:var(--text-muted);white-space:nowrap;min-width:120px}
+.motif-bar-count{color:var(--text-muted);min-width:24px;text-align:right}
 .si{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:10px 14px;font-size:.88rem}
 .si:focus{outline:none;border-color:var(--accent)}
 .ttag{background:rgba(232,115,12,.1);border:1px solid rgba(232,115,12,.2);color:var(--accent);font-size:.82rem;font-weight:700;padding:6px 14px;border-radius:100px}
@@ -355,7 +413,9 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .mbody{padding:24px}
 .mftr{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--border)}
 
-/* PIN MODAL */
+/* Nav group labels */
+.nav-grp-lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);padding:12px 16px 4px;font-weight:700;opacity:.6}
+.nav-grp-owner{color:var(--accent);opacity:.85;margin-top:4px;border-top:1px solid var(--border);padding-top:14px}
 .pin-display{display:flex;gap:10px;justify-content:center;margin:20px 0}
 .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-accent);transition:background .2s}
 .pin-dot.filled{background:var(--accent)}
@@ -416,6 +476,59 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .therm-bold{font-weight:700}
 .therm-row{display:flex;justify-content:space-between;gap:4px}
 .therm-sm{font-size:.85em;color:#444}
+/* ---- VENTE RAPIDE ---- */
+.qr-layout{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 64px);gap:0}
+.qr-left{padding:24px;overflow-y:auto;border-right:1px solid var(--border)}
+.qr-right{padding:20px;display:flex;flex-direction:column;background:var(--surface)}
+.qr-display{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;font-size:2.4rem;font-weight:700;font-family:var(--fh);text-align:right;color:var(--accent);letter-spacing:2px;min-height:72px;margin-bottom:16px;word-break:break-all}
+.qr-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.qr-key{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);padding:18px 0;font-size:1.3rem;font-weight:700;cursor:pointer;transition:all var(--tr);color:var(--text);text-align:center}
+.qr-key:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.qr-key.del{background:rgba(231,76,60,.1);color:var(--danger);border-color:rgba(231,76,60,.3)}
+.qr-key.del:hover{background:var(--danger);color:#fff}
+.qr-key.zero{grid-column:span 2}
+.qr-add-btn{width:100%;margin-bottom:16px}
+.qr-lines{flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:var(--rsm);min-height:100px;margin-bottom:12px}
+.qr-line{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-size:.9rem}
+.qr-line:last-child{border-bottom:none}
+.qr-line .ql-dept{color:var(--accent);font-weight:700;font-size:.8rem;min-width:70px}
+.qr-line .ql-amt{font-weight:600;font-family:var(--fh)}
+.qr-line .ql-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:2px 6px;opacity:.7;transition:opacity var(--tr)}
+.qr-line .ql-del:hover{opacity:1}
+.qr-tot{background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:12px}
+.qr-empty{padding:20px;text-align:center;color:var(--text-muted);font-size:.85rem}
+@media(max-width:900px){.qr-layout{grid-template-columns:1fr;grid-template-rows:1fr auto}.qr-right{max-height:55vh}}
+/* ---- MONNAIE À RENDRE ---- */
+.qr-monnaie{background:var(--bg);border:2px solid var(--border);border-radius:var(--rsm);padding:14px;margin-bottom:12px;transition:border-color .2s}
+.qr-monnaie.ok{border-color:#27ae60}
+.qr-monnaie.insuf{border-color:var(--danger)}
+.qr-monnaie label{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:700;display:block;margin-bottom:6px}
+.qr-monnaie input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:10px 12px;font-size:1.1rem;font-weight:700;font-family:var(--fh)}
+.qr-monnaie input:focus{outline:none;border-color:var(--accent)}
+.qr-rendu{margin-top:8px;display:flex;justify-content:space-between;align-items:center;font-size:.9rem}
+.qr-rendu .rendu-lbl{color:var(--text-muted)}
+.qr-rendu .rendu-val{font-weight:700;font-size:1.1rem;font-family:var(--fh)}
+.rendu-val.ok{color:#27ae60}
+.rendu-val.insuf{color:var(--danger)}
+/* ---- SECTION CAISSE ---- */
+.caisse-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.caisse-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px}
+.caisse-card h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px;font-weight:700}
+.caisse-status{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:700;margin-bottom:12px}
+.caisse-status.ouverte{background:rgba(39,174,96,.15);color:#27ae60;border:1px solid rgba(39,174,96,.3)}
+.caisse-status.fermee{background:rgba(231,76,60,.1);color:var(--danger);border:1px solid rgba(231,76,60,.2)}
+.caisse-fond-val{font-size:1.8rem;font-weight:700;font-family:var(--fh);color:var(--accent);margin-bottom:4px}
+.caisse-fond-sub{font-size:.78rem;color:var(--text-muted)}
+.rapport-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.rapport-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.rapport-table tr:last-child td{border-bottom:none}
+.rapport-table .rt-lbl{color:var(--text-muted)}
+.rapport-table .rt-val{text-align:right;font-weight:600;font-family:var(--fh)}
+.rapport-table .rt-total td{background:var(--surface2);font-weight:700;font-size:1rem}
+.rapport-table .rt-total .rt-val{color:var(--accent)}
+.mo-fond-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:14px;font-size:1.4rem;font-weight:700;font-family:var(--fh);text-align:right;margin-bottom:16px}
+.mo-fond-input:focus{outline:none;border-color:var(--accent)}
+@media(max-width:640px){.caisse-grid{grid-template-columns:1fr}}
 
 /* TOAST */
 .toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 20px;font-size:.88rem;font-weight:500;box-shadow:var(--shadow);z-index:9999;animation:tIn .3s ease;max-width:360px}
@@ -425,107 +538,54 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 @keyframes tIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
 /* ============================================================
-   RESPONSIVE — Mobile, Tablette, PWA safe areas
+   OFFLINE BANNER & PWA INSTALL
    ============================================================ */
-:root{
-  --safe-top:env(safe-area-inset-top,0px);
-  --safe-bottom:env(safe-area-inset-bottom,0px);
-  --safe-left:env(safe-area-inset-left,0px);
-  --safe-right:env(safe-area-inset-right,0px);
+/* Bannière mode hors ligne — apparaît quand Internet tombe */
+#offline-banner{
+  position:fixed;top:0;left:0;right:0;z-index:10000;
+  background:linear-gradient(90deg,rgba(243,156,18,.95),rgba(230,126,34,.95));
+  backdrop-filter:blur(8px);
+  color:#fff;font-size:.85rem;font-weight:600;
+  padding:10px 20px;display:none;
+  align-items:center;justify-content:space-between;gap:12px;
+  animation:slideDown .3s ease;box-shadow:0 2px 12px rgba(0,0,0,.3)
 }
-@media(display-mode:standalone){
-  .main{padding-bottom:var(--safe-bottom)}
-  .pos-cart{padding-bottom:calc(16px + var(--safe-bottom))}
-  .lnav,.adm-topbar{padding-top:calc(16px + var(--safe-top))}
-  body{-webkit-tap-highlight-color:transparent}
+#offline-banner.show{display:flex}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+.offline-left{display:flex;align-items:center;gap:10px}
+.offline-ico{font-size:1.1rem;animation:pulse 1.5s infinite}
+.offline-sync-btn{background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);
+  color:#fff;padding:5px 12px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;
+  transition:background .2s}
+.offline-sync-btn:hover{background:rgba(255,255,255,.4)}
+.offline-queue-badge{background:rgba(255,255,255,.3);padding:2px 8px;border-radius:100px;font-size:.72rem}
+
+/* Indicateur de statut connexion dans la topbar */
+#conn-indicator{display:flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;
+  padding:4px 10px;border-radius:100px;transition:all .3s}
+#conn-indicator.online{background:rgba(46,204,113,.1);color:var(--success);border:1px solid rgba(46,204,113,.2)}
+#conn-indicator.offline{background:rgba(243,156,18,.1);color:var(--warning);border:1px solid rgba(243,156,18,.2)}
+#conn-indicator.syncing{background:rgba(79,195,247,.1);color:#4FC3F7;border:1px solid rgba(79,195,247,.2)}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.conn-dot.pulse{animation:pulse 1.5s infinite}
+
+/* Bouton d'installation PWA */
+#pwa-install-btn{
+  display:none;align-items:center;gap:6px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  color:#fff;padding:8px 16px;border-radius:var(--rsm);font-size:.82rem;font-weight:600;
+  cursor:pointer;border:none;box-shadow:var(--shadow-a);transition:all .2s;
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999;
+  animation:floatUp .4s ease;white-space:nowrap
 }
-/* ---- 1200px ---- */
-@media(max-width:1200px){
-  .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .sett-grid{grid-template-columns:1fr}
-  .feats{grid-template-columns:repeat(2,1fr)}
-}
-/* ---- 900px / Tablette ---- */
-@media(max-width:900px){
-  .sidebar{position:fixed;left:-100%;height:100vh;transition:left var(--tr);z-index:200;box-shadow:4px 0 24px rgba(0,0,0,.4)}
-  .sidebar.mob-open{left:0}
-  .mob-menu{display:flex}
-  .lnav{padding:14px 16px}
-  .nav-acts .btn-p,.nav-acts .btn-g{padding:8px 14px;font-size:.82rem}
-  .auth-r{display:none}
-  .auth-l{width:100%;padding:24px 20px}
-  .auth-li{max-width:100%;padding-top:8px}
-  .pos-layout{display:flex;flex-direction:column;height:auto;min-height:calc(100vh - 64px)}
-  .pos-cat{flex:1;min-height:0;overflow-y:auto}
-  .pos-cart{max-height:none;height:auto;border-left:none;border-top:1px solid var(--border);padding:16px}
-  .dash-grid{grid-template-columns:1fr}
-  .adm-sb{position:fixed;left:-220px;height:100vh;transition:left .2s ease;z-index:200;box-shadow:4px 0 24px rgba(0,0,0,.5)}
-  .adm-sb.mob-open{left:0}
-  .adm-kpi-grid{grid-template-columns:1fr 1fr}
-  .adm-grid2{grid-template-columns:1fr}
-  .plan-grid{grid-template-columns:1fr 1fr}
-  .merch-detail-grid{grid-template-columns:1fr}
-  .section{padding:14px}
-  .topbar{padding:12px 14px}
-}
-/* ---- 640px / Mobile ---- */
-@media(max-width:640px){
-  .hero{padding:48px 16px 36px}
-  .hero h1{font-size:clamp(1.7rem,5vw,2.2rem)}
-  .hero-stats{flex-direction:column;width:100%}
-  .hstat{padding:14px 24px}
-  .hdiv{width:100%;height:1px}
-  .hero-cta{flex-direction:column;align-items:stretch;padding:0 8px}
-  .hero-cta .btn-p,.hero-cta .btn-g{width:100%;justify-content:center}
-  .feats{grid-template-columns:1fr 1fr}
-  .section{padding:12px}
-  .topbar{padding:10px 12px}
-  .tb-r .theme-pills{display:none}
-  .kpi-grid{grid-template-columns:1fr 1fr}
-  .fr{grid-template-columns:1fr}
-  .pos-grid{grid-template-columns:repeat(2,1fr);gap:8px}
-  .ppc{padding:14px 10px}
-  .ppc-emo{font-size:1.8rem}
-  .ci{padding:8px 10px;gap:6px}
-  .ci-name{font-size:.82rem}
-  .tacts{flex-wrap:wrap;gap:4px}
-  .tbtn{font-size:.72rem;padding:4px 8px}
-  .mo{align-items:flex-end;padding:0}
-  .modal{border-radius:var(--rlg) var(--rlg) 0 0;max-height:92vh;overflow-y:auto}
-  #s-products table,#s-clients table,#s-sales table,#s-stock table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .sett-grid{grid-template-columns:1fr}
-  .adm-kpi-grid{grid-template-columns:1fr 1fr}
-  .plan-grid,.op-grid{grid-template-columns:1fr}
-  #op-cards-preview{grid-template-columns:1fr!important}
-  .btn-p.xl{padding:14px 20px;font-size:.95rem}
-}
-/* ---- 380px ---- */
-@media(max-width:380px){
-  .feats{grid-template-columns:1fr}
-  .kpi-grid{grid-template-columns:1fr}
-  .hero h1{font-size:1.5rem}
-  .pin-btn{padding:12px;font-size:1.1rem}
-}
-/* ---- Landscape mobile ---- */
-@media(max-width:900px) and (orientation:landscape){
-  .pos-layout{flex-direction:row}
-  .pos-cat{flex:1}
-  .pos-cart{width:300px;min-width:300px;max-height:100vh;overflow-y:auto;border-top:none;border-left:1px solid var(--border)}
-}
-/* ---- Touch targets min 44px ---- */
-@media(pointer:coarse){
-  .ni{min-height:44px}
-  .ci-qbtn{width:32px;height:32px}
-  .btn-p,.btn-g,.btn-d{min-height:44px}
-  .btn-p.sm,.btn-g.sm{min-height:36px}
-  .tsw-pill{width:28px;height:28px}
-  .tp{width:24px;height:24px}
-  .pin-btn{min-height:52px}
-}
-/* ---- GPU layers ---- */
-.sidebar,.toast,.mo,.modal{will-change:transform}
-.btn-p:active,.btn-g:active{transform:scale(.97)!important;transition:transform .1s}
-.ppc:active{transform:scale(.96)!important}
+#pwa-install-btn.visible{display:flex}
+#pwa-install-btn:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 8px 24px rgba(232,115,12,.4)}
+@keyframes floatUp{from{opacity:0;bottom:0}to{opacity:1;bottom:24px}}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.sett-grid{grid-template-columns:1fr}.feats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.sidebar{position:fixed;left:-100%;height:100vh;transition:left var(--tr)}.sidebar.mob-open{left:0}.mob-menu{display:flex}.lnav{padding:16px 20px}.auth-r{display:none}.auth-l{width:100%}.pos-layout{grid-template-columns:1fr;grid-template-rows:1fr auto}.pos-cart{max-height:55vh}.dash-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.hero{padding:60px 20px 50px}.feats{grid-template-columns:1fr}.section{padding:16px 14px}.topbar{padding:12px 14px}.kpi-grid{grid-template-columns:1fr 1fr}.hero-cta{flex-direction:column;align-items:center}.fr{grid-template-columns:1fr}}
 
 /* ============================================================
    ADMIN PANEL CSS
@@ -534,7 +594,6 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 #page-admin{background:#080C14;color:#E2E8F0;font-family:'DM Sans',sans-serif;min-height:100vh;display:none;flex-direction:row}
 #page-admin.active{display:flex}
 .adm-sb{width:220px;background:#0D1117;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;flex-shrink:0}
-.adm-mob-menu{display:none;position:fixed;top:16px;left:16px;z-index:300;background:#0D1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;color:#E2E8F0;font-size:1.2rem;cursor:pointer}
 .adm-logo{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px}
 .adm-logo-ico{width:32px;height:32px;background:linear-gradient(135deg,#E8730C,#FF9540);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .adm-logo-text{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;color:#E2E8F0;line-height:1.2}
@@ -645,8 +704,8 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .pay-header .pay-ico{font-size:3rem;margin-bottom:12px}
 .pay-header h2{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:6px}
 .pay-expired-badge{display:inline-block;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.3);color:#E74C3C;font-size:.8rem;font-weight:700;padding:4px 14px;border-radius:100px;margin-bottom:8px}
-/* Plan selector */
-.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+/* Plan selector — 3 colonnes */
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
 .plan-opt{background:#1E1C1A;border:2px solid rgba(255,255,255,0.07);border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;text-align:center;position:relative}
 .plan-opt:hover{border-color:rgba(232,115,12,.4)}
 .plan-opt.selected{border-color:#E8730C;background:rgba(232,115,12,.08)}
@@ -699,7 +758,7 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 }
 @media(max-width:600px){
   .adm-kpi-grid{grid-template-columns:1fr 1fr}
-  .plan-grid,.op-grid{grid-template-columns:1fr}
+  .plan-grid{grid-template-columns:1fr}
 }
 
 /* ---- STOCK SECTION ---- */
@@ -718,6 +777,18 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 // URL de base de l'API — auto-détectée selon l'environnement
 const API_BASE = window.location.origin;
 
+// Lit la réponse en JSON de façon sûre — si le serveur renvoie du HTML (erreur Vercel),
+// on lance une erreur claire au lieu de "Unexpected token 'A'"
+async function _safeJson(res) {
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    const text = await res.text();
+    const preview = text.substring(0, 120).replace(/\n/g, ' ');
+    throw new Error(`Réponse serveur invalide (HTTP ${res.status}) : ${preview}`);
+  }
+  return res.json();
+}
+
 // Client API simple — toutes les communications passent par /api/
 const API = {
   async post(endpoint, body) {
@@ -726,16 +797,16 @@ const API = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    const data = await _safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur ' + res.status);
     return data;
   },
   async get(endpoint, params = {}) {
     const qs = new URLSearchParams(params).toString();
     const url = API_BASE + '/api/' + endpoint + (qs ? '?' + qs : '');
     const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    const data = await _safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur ' + res.status);
     return data;
   },
   async admin(action, body = {}) {
@@ -746,8 +817,8 @@ const API = {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ action, ...body })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur serveur');
+    const data = await _safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Erreur serveur ' + res.status);
     return data;
   }
 };
@@ -764,11 +835,21 @@ async function checkApiStatus() {
 }
 window.addEventListener('load', checkApiStatus);
 </script>
-</head>
 
 <body>
 
-<!-- SVG DEFS -->
+<!-- ====================== OFFLINE BANNER ====================== -->
+<div id="offline-banner">
+  <div class="offline-left">
+    <span class="offline-ico">📡</span>
+    <span>Mode hors ligne — Vos données sont préservées localement</span>
+    <span id="offline-queue-count" class="offline-queue-badge" style="display:none">0 en attente</span>
+  </div>
+  <button class="offline-sync-btn" onclick="manualSync()">🔄 Synchroniser</button>
+</div>
+
+<!-- ====================== PWA INSTALL BUTTON ====================== -->
+<button id="pwa-install-btn" onclick="installPWA()">📲 Installer l'application</button>
 <svg style="display:none">
   <symbol id="logo-sym" viewBox="0 0 40 40" fill="none">
     <circle cx="20" cy="20" r="18" fill="var(--accent)" opacity=".15"/>
@@ -895,13 +976,19 @@ window.addEventListener('load', checkApiStatus);
     </div>
     <div class="lic-badge" id="lic-badge"><span class="lic-dot"></span><span class="lic-text" id="lic-text">Licence active</span></div>
     <nav class="sb-nav">
-      <button class="ni" onclick="reqPin('dashboard')" data-s="dashboard"><span class="ni-ico">📊</span><span class="nl">Dashboard</span><span class="ni-lock">🔒</span></button>
-      <button class="ni" onclick="showSection('pos')" data-s="pos"><span class="ni-ico">🛒</span><span class="nl">Point de Vente</span></button>
-      <button class="ni" onclick="reqPin('products')" data-s="products"><span class="ni-ico">📦</span><span class="nl">Produits</span><span class="ni-lock">🔒</span></button>
-      <button class="ni" onclick="reqPin('stock')" data-s="stock"><span class="ni-ico">🏭</span><span class="nl">Gestion Stock</span><span class="ni-lock">🔒</span></button>
-      <button class="ni" onclick="reqPin('clients')" data-s="clients"><span class="ni-ico">👥</span><span class="nl">Clients</span><span class="ni-lock">🔒</span></button>
-      <button class="ni" onclick="reqPin('sales')" data-s="sales"><span class="ni-ico">🧾</span><span class="nl">Ventes</span><span class="ni-lock">🔒</span></button>
-      <button class="ni" onclick="reqPin('settings')" data-s="settings"><span class="ni-ico">⚙️</span><span class="nl">Paramètres</span><span class="ni-lock">🔒</span></button>
+      <!-- GÉRANT — accès libre -->
+      <div class="nav-grp-lbl">Vente</div>
+      <button class="ni" onclick="showSection('pos')"      data-s="pos">      <span class="ni-ico">🛒</span><span class="nl">Point de Vente</span></button>
+      <button class="ni" onclick="showSection('quick')"    data-s="quick">   <span class="ni-ico">⚡</span><span class="nl">Vente Rapide</span></button>
+      <button class="ni" onclick="showSection('caisse')"   data-s="caisse">  <span class="ni-ico">💰</span><span class="nl">Caisse</span></button>
+      <button class="ni" onclick="showSection('products')" data-s="products"><span class="ni-ico">📦</span><span class="nl">Produits</span></button>
+      <!-- PROPRIÉTAIRE — PIN requis -->
+      <div class="nav-grp-lbl nav-grp-owner">🔐 Propriétaire</div>
+      <button class="ni" onclick="reqPin('dashboard')" data-s="dashboard"><span class="ni-ico">📊</span><span class="nl">Dashboard</span><span class="ni-lock">🔒</span><span class="ni-notif-dot" id="nav-notif-dot" style="display:none"></span></button>
+      <button class="ni" onclick="reqPin('stock')"     data-s="stock">    <span class="ni-ico">🏭</span><span class="nl">Gestion Stock</span><span class="ni-lock">🔒</span></button>
+      <button class="ni" onclick="reqPin('clients')"   data-s="clients">  <span class="ni-ico">👥</span><span class="nl">Clients</span><span class="ni-lock">🔒</span></button>
+      <button class="ni" onclick="reqPin('sales')"     data-s="sales">    <span class="ni-ico">🧾</span><span class="nl">Ventes</span><span class="ni-lock">🔒</span></button>
+      <button class="ni" onclick="reqPin('settings')"  data-s="settings"> <span class="ni-ico">⚙️</span><span class="nl">Paramètres</span><span class="ni-lock">🔒</span></button>
     </nav>
     <div class="sb-foot">
       <div class="mm"><div class="mm-av" id="mm-av">A</div><div class="mm-info"><span id="mm-name">—</span><span id="mm-city">—</span></div></div>
@@ -918,6 +1005,11 @@ window.addEventListener('load', checkApiStatus);
       </div>
       <div class="tb-r">
         <span id="lic-exp-warn"></span>
+        <!-- Indicateur de connexion / mode offline -->
+        <div id="conn-indicator" class="online" title="Statut de la connexion">
+          <span class="conn-dot"></span>
+          <span id="conn-label">En ligne</span>
+        </div>
         <div class="theme-pills" id="app-theme-pills">
           <div class="tp active" data-t="dark" title="Sombre" onclick="setTheme('dark',this)"></div>
           <div class="tp" data-t="light" title="Clair" onclick="setTheme('light',this)"></div>
@@ -933,6 +1025,29 @@ window.addEventListener('load', checkApiStatus);
     <!-- DASHBOARD -->
     <section id="s-dashboard" class="section">
       <div class="welcome"><div><h3 id="w-msg">Bienvenue !</h3><p id="w-date"></p></div><div class="w-ico">🌍</div></div>
+
+      <!-- Notifications stock (gérant) -->
+      <div class="notif-panel" id="dash-notif-panel" style="display:none">
+        <div class="notif-panel-hdr">
+          <h4>🔔 Activités du gérant <span class="bdg-notif" id="dash-notif-count">0</span></h4>
+          <button class="btn-g sm" onclick="clearStockNotifs()">Tout effacer</button>
+        </div>
+        <div id="dash-notif-list"><p class="notif-empty">Aucune activité.</p></div>
+      </div>
+
+      <!-- Statistiques annulations -->
+      <div class="cancel-stat-card" id="dash-cancel-stats" style="display:none">
+        <div class="cancel-stat-hdr">
+          <h4>🚫 Annulations</h4>
+          <button class="btn-g sm" onclick="reqPin('sales')">Voir tout</button>
+        </div>
+        <div class="cancel-kpis">
+          <div class="cancel-kpi"><div class="cancel-kpi-val" id="cs-count">0</div><div class="cancel-kpi-lbl">Ce mois</div></div>
+          <div class="cancel-kpi"><div class="cancel-kpi-val" id="cs-amount">0</div><div class="cancel-kpi-lbl">FCFA perdus</div></div>
+          <div class="cancel-kpi"><div class="cancel-kpi-val" id="cs-rate">0%</div><div class="cancel-kpi-lbl">Taux</div></div>
+        </div>
+        <div id="cs-motif-bars"></div>
+      </div>
       <div class="kpi-grid">
         <div class="kpi acc"><div class="kpi-lbl">Chiffre d'affaires</div><div class="kpi-val" id="k-ca">0</div><div class="kpi-sub">Total des ventes</div></div>
         <div class="kpi"><div class="kpi-lbl">Ventes</div><div class="kpi-val" id="k-v">0</div><div class="kpi-sub">Transactions</div></div>
@@ -956,15 +1071,22 @@ window.addEventListener('load', checkApiStatus);
           <div class="cart-hdr"><h3>Panier <span class="bdg" id="cart-cnt">0</span></h3><button class="btn-g sm" onclick="clearCart()">Vider</button></div>
           <div id="cart-items" class="cart-list"><p class="empty">Panier vide</p></div>
 
-          <!-- CLIENT : Nom + WhatsApp -->
-          <div class="cart-client-area">
-            <label>👤 Client</label>
-            <select id="cart-cli-sel" onchange="onCliSelect()">
-              <option value="">+ Nouveau client / Saisir manuellement</option>
-            </select>
-            <input id="cart-cli-nom" placeholder="Nom du client" style="margin-top:6px"/>
-            <input id="cart-cli-wa" placeholder="WhatsApp (ex: 2250700000000)" style="margin-top:6px"/>
-            <div class="wa-hint">📲 Un message WhatsApp sera envoyé après la vente</div>
+          <!-- CLIENT : Nom + WhatsApp — Panneau rétractable pour libérer l'espace POS -->
+          <div class="cart-client-area collapsed" id="cart-client-panel">
+            <div class="cart-client-header" onclick="toggleClientPanel()">
+              <label>👤 <span id="cli-header-lbl">Client</span>
+                <span class="cli-preview" id="cli-preview-name"></span>
+              </label>
+              <span class="cart-client-toggle">▼</span>
+            </div>
+            <div class="cart-client-body">
+              <select id="cart-cli-sel" onchange="onCliSelect()">
+                <option value="">+ Nouveau client / Saisir manuellement</option>
+              </select>
+              <input id="cart-cli-nom" placeholder="Nom du client" style="margin-top:6px" oninput="updateCliPreview()"/>
+              <input id="cart-cli-wa" placeholder="WhatsApp (ex: 2250700000000)" style="margin-top:6px"/>
+              <div class="wa-hint">📲 Message WhatsApp auto après la vente</div>
+            </div>
           </div>
 
           <div class="cart-tot">
@@ -975,6 +1097,110 @@ window.addEventListener('load', checkApiStatus);
         </div>
       </div>
     </section>
+
+    <!-- VENTE RAPIDE -->
+    <section id="s-quick" class="section">
+      <div class="qr-layout">
+        <!-- Colonne gauche : clavier -->
+        <div class="qr-left">
+          <p style="font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;font-weight:700">Saisir le montant</p>
+          <div id="qr-display" class="qr-display">0</div>
+          <div class="qr-keypad">
+            <button class="qr-key" onclick="qrKey('7')">7</button>
+            <button class="qr-key" onclick="qrKey('8')">8</button>
+            <button class="qr-key" onclick="qrKey('9')">9</button>
+            <button class="qr-key" onclick="qrKey('4')">4</button>
+            <button class="qr-key" onclick="qrKey('5')">5</button>
+            <button class="qr-key" onclick="qrKey('6')">6</button>
+            <button class="qr-key" onclick="qrKey('1')">1</button>
+            <button class="qr-key" onclick="qrKey('2')">2</button>
+            <button class="qr-key" onclick="qrKey('3')">3</button>
+            <button class="qr-key zero" onclick="qrKey('0')">0</button>
+            <button class="qr-key del" onclick="qrDel()">⌫</button>
+          </div>
+          <button class="btn-p full qr-add-btn" onclick="qrAddLine()">+ Ajouter la ligne</button>
+          <button class="btn-g full" onclick="qrReset()" style="font-size:.82rem">🗑 Tout effacer</button>
+        </div>
+        <!-- Colonne droite : récapitulatif + impression -->
+        <div class="qr-right">
+          <div class="cart-hdr"><h3>Articles <span class="bdg" id="qr-cnt">0</span></h3></div>
+          <div id="qr-lines" class="qr-lines"><p class="qr-empty">Aucun article</p></div>
+          <div class="qr-tot">
+            <div class="ct-row"><span>Nombre d'articles</span><span id="qr-nb">0</span></div>
+            <div class="ct-row big"><span>TOTAL</span><span id="qr-total">0 FCFA</span></div>
+          </div>
+          <!-- Monnaie à rendre -->
+          <div class="qr-monnaie" id="qr-monnaie-box">
+            <label>💵 Montant reçu</label>
+            <input type="number" id="qr-recu" placeholder="0" oninput="qrCalcRendu()" min="0"/>
+            <div class="qr-rendu">
+              <span class="rendu-lbl">Monnaie à rendre</span>
+              <span class="rendu-val" id="qr-rendu-val">—</span>
+            </div>
+          </div>
+          <button class="btn-p full xl" onclick="processQuickSale()">🖨 Valider &amp; Imprimer</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAISSE -->
+    <section id="s-caisse" class="section">
+      <div style="max-width:860px;margin:0 auto">
+        <!-- Statut caisse -->
+        <div class="caisse-grid">
+          <div class="caisse-card">
+            <h4>Statut de la caisse</h4>
+            <div id="caisse-status-badge" class="caisse-status fermee">● Fermée</div>
+            <div id="caisse-fond-display" class="caisse-fond-val">— FCFA</div>
+            <div class="caisse-fond-sub">Fond d'ouverture</div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-p sm" id="btn-ouvrir-caisse" onclick="ouvrirCaisse()">🔓 Ouvrir la caisse</button>
+              <button class="btn-d sm" id="btn-fermer-caisse" onclick="fermerCaisse()" style="display:none">🔒 Fermer la caisse</button>
+            </div>
+          </div>
+          <div class="caisse-card">
+            <h4>Résumé du jour</h4>
+            <table class="rapport-table">
+              <tr><td class="rt-lbl">Fond d'ouverture</td><td class="rt-val" id="rpt-fond">0 FCFA</td></tr>
+              <tr><td class="rt-lbl">Ventes encaissées</td><td class="rt-val" id="rpt-ventes">0 FCFA</td></tr>
+              <tr><td class="rt-lbl">Nombre de ventes</td><td class="rt-val" id="rpt-nb">0</td></tr>
+              <tr class="rt-total"><td class="rt-lbl">Total en caisse</td><td class="rt-val" id="rpt-total">0 FCFA</td></tr>
+            </table>
+          </div>
+        </div>
+        <!-- Rapport journalier -->
+        <div class="caisse-card" style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h4 style="margin:0">📊 Rapport journalier</h4>
+            <button class="btn-g sm" onclick="imprimerRapport()">🖨 Imprimer</button>
+          </div>
+          <table class="rapport-table" id="rpt-detail-table">
+            <thead><tr style="background:var(--surface2)">
+              <th style="text-align:left;padding:8px 12px;font-size:.78rem;color:var(--text-muted)">Heure</th>
+              <th style="text-align:left;padding:8px 12px;font-size:.78rem;color:var(--text-muted)">Caissier</th>
+              <th style="text-align:right;padding:8px 12px;font-size:.78rem;color:var(--text-muted)">Montant</th>
+            </tr></thead>
+            <tbody id="rpt-tbody"><tr><td colspan="3" class="empty">Aucune vente aujourd'hui</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal ouverture caisse -->
+    <div id="mo-caisse" class="mo hidden">
+      <div class="modal" style="max-width:380px">
+        <div class="mo-hdr"><h3>🔓 Ouvrir la caisse</h3></div>
+        <div class="mo-body">
+          <label style="font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;display:block;margin-bottom:8px">Fond de caisse initial</label>
+          <input type="number" id="fond-input" class="mo-fond-input" placeholder="0" min="0"/>
+          <p style="font-size:.8rem;color:var(--text-muted)">Saisissez le montant en espèces disponible à l'ouverture.</p>
+        </div>
+        <div class="mo-foot">
+          <button class="btn-g" onclick="closeMo('mo-caisse')">Annuler</button>
+          <button class="btn-p" onclick="confirmerOuverture()">Confirmer l'ouverture</button>
+        </div>
+      </div>
+    </div>
 
     <!-- GESTION STOCK -->
     <section id="s-stock" class="section">
@@ -1028,7 +1254,16 @@ window.addEventListener('load', checkApiStatus);
         <input class="si" id="sale-srch" placeholder="🔍 Rechercher..." oninput="renderSales()"/>
         <span id="sale-total" class="ttag"></span>
       </div>
-      <table class="dt"><thead><tr><th>#</th><th>Client</th><th>WhatsApp</th><th>Total</th><th>Date</th><th>Actions</th></tr></thead><tbody id="sale-tbody"><tr><td colspan="6" class="empty">Aucune vente.</td></tr></tbody></table>
+      <!-- Onglets filtre -->
+      <div class="sale-tabs">
+        <button class="sale-tab active" data-tab="all"     onclick="setSaleTab('all',this)">Toutes <span id="tab-cnt-all"    class="bdg">0</span></button>
+        <button class="sale-tab"        data-tab="done"    onclick="setSaleTab('done',this)">✅ Validées <span id="tab-cnt-done"  class="bdg">0</span></button>
+        <button class="sale-tab tab-cancelled" data-tab="cancelled" onclick="setSaleTab('cancelled',this)">🚫 Annulées <span id="tab-cnt-cancelled" class="bdg" style="background:var(--danger)">0</span></button>
+      </div>
+      <table class="dt">
+        <thead><tr><th>#</th><th>Client</th><th>WhatsApp</th><th>Total</th><th>Date / Motif</th><th>Actions</th></tr></thead>
+        <tbody id="sale-tbody"><tr><td colspan="6" class="empty">Aucune vente.</td></tr></tbody>
+      </table>
     </section>
 
     <!-- PARAMÈTRES -->
@@ -1064,7 +1299,7 @@ window.addEventListener('load', checkApiStatus);
         </div>
         <div class="sc">
           <h4>🔐 PIN Propriétaire</h4>
-          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Le PIN protège l'accès aux sections Produits, Clients, Ventes et Paramètres.</p>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:16px">Le PIN réserve l'accès à <strong>Dashboard, Stock, Clients, Ventes et Paramètres</strong> au propriétaire. Le gérant accède librement au POS et aux Produits.</p>
           <div class="fg"><label>Nouveau PIN (4 chiffres)</label><input type="password" id="s-pin-new" maxlength="4" placeholder="••••" inputmode="numeric"/></div>
           <div class="fg"><label>Confirmer PIN</label><input type="password" id="s-pin-conf" maxlength="4" placeholder="••••" inputmode="numeric"/></div>
           <button class="btn-p" onclick="savePin()">Enregistrer le PIN</button>
@@ -1158,9 +1393,58 @@ window.addEventListener('load', checkApiStatus);
     </div>
     <div class="mftr">
       <button class="btn-g" onclick="closeMo('mo-inv')">Fermer</button>
+      <button class="btn-d sm" id="inv-cancel-btn" onclick="cancelFromInvoice()" style="display:none">🚫 Annuler</button>
       <button class="btn-p" id="wa-send-btn" onclick="sendWA()" style="background:#25D366">💬 WhatsApp</button>
       <button class="btn-p" id="bt-print-btn" onclick="btPrint()" style="background:#1565C0">🖨️ Bluetooth</button>
       <button class="btn-p" onclick="doPrint()">🖨️ Imprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ANNULATION VENTE -->
+<div id="mo-cancel" class="mo hidden" onclick="closeMoOv(event,'mo-cancel')">
+  <div class="modal">
+    <div class="mhdr"><h3>🚫 Annuler la vente</h3><button class="mcls" onclick="closeMo('mo-cancel')">✕</button></div>
+    <div class="mbdy">
+      <!-- Récap vente -->
+      <div id="cancel-sale-recap" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rsm);padding:12px;margin-bottom:16px;font-size:.83rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:var(--text-muted)">Référence</span>
+          <strong id="cancel-ref">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:var(--text-muted)">Client</span>
+          <span id="cancel-client">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text-muted)">Montant</span>
+          <strong id="cancel-amount" style="color:var(--danger)">—</strong>
+        </div>
+      </div>
+      <!-- Catégorie motif -->
+      <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);display:block;margin-bottom:8px">Motif d'annulation *</label>
+      <div class="cancel-motifs" id="cancel-motifs-grid">
+        <button class="cancel-motif-btn" data-motif="Erreur de saisie"      onclick="selectMotif(this)">✏️ Erreur de saisie</button>
+        <button class="cancel-motif-btn" data-motif="Demande du client"     onclick="selectMotif(this)">👤 Demande du client</button>
+        <button class="cancel-motif-btn" data-motif="Produit indisponible"  onclick="selectMotif(this)">📦 Produit indisponible</button>
+        <button class="cancel-motif-btn" data-motif="Paiement refusé"       onclick="selectMotif(this)">💳 Paiement refusé</button>
+        <button class="cancel-motif-btn" data-motif="Doublon"               onclick="selectMotif(this)">🔁 Doublon</button>
+        <button class="cancel-motif-btn" data-motif="Autre"                 onclick="selectMotif(this)">💬 Autre</button>
+      </div>
+      <!-- Précision libre -->
+      <div class="fg" style="margin-top:4px">
+        <label>Précisions <span style="font-weight:400;opacity:.6">(optionnel)</span></label>
+        <textarea id="cancel-detail" rows="2" placeholder="Ex : le client a changé d'avis..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);padding:10px;font-size:.85rem;resize:vertical"></textarea>
+      </div>
+      <!-- Info stock restauration -->
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:var(--rsm);font-size:.78rem;color:#2ECC71;display:flex;align-items:center;gap:8px">
+        📦 Le stock des produits sera <strong>automatiquement restauré</strong>.
+      </div>
+      <div id="cancel-items-preview" style="margin-top:8px;font-size:.75rem;color:var(--text-muted)"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn-g" onclick="closeMo('mo-cancel')">Fermer</button>
+      <button class="btn-d" id="cancel-confirm-btn" onclick="confirmCancelSale()" disabled>🚫 Confirmer l'annulation</button>
     </div>
   </div>
 </div>
@@ -1237,8 +1521,6 @@ window.addEventListener('load', checkApiStatus);
     </div>
   </div>
 
-  <!-- Admin Mobile Menu Button -->
-  <button class="adm-mob-menu" onclick="toggleAdminSidebar()" aria-label="Menu admin">☰</button>
   <!-- MAIN -->
   <div class="adm-main">
     <div class="adm-topbar">
@@ -1307,26 +1589,42 @@ window.addEventListener('load', checkApiStatus);
 
     <!-- PLANS -->
     <div id="as-plans" class="adm-section">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px" id="plan-preview-cards"></div>
+      <!-- Aperçu en temps réel des 3 plans -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px" id="plan-preview-cards"></div>
       <div class="adm-card">
-        <div class="adm-card-hdr"><h3>⚙️ Modifier les plans</h3></div>
+        <div class="adm-card-hdr"><h3>⚙️ Modifier les plans tarifaires</h3></div>
         <div class="adm-card-body" style="padding:20px">
-          <div class="adm-grid2">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+            <!-- Mensuel -->
             <div>
-              <h4 style="font-size:.85rem;margin-bottom:12px;color:#94A3B8">Plan Mensuel</h4>
-              <div class="adm-fg"><label>Prix (FCFA)</label><input type="number" id="plan-m-prix" placeholder="5000"/></div>
+              <h4 style="font-size:.82rem;margin-bottom:10px;color:#94A3B8;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:8px">📅 Plan Mensuel</h4>
+              <div class="adm-fg"><label>Prix (FCFA)</label><input type="number" id="plan-m-prix" placeholder="6000"/></div>
               <div class="adm-fg"><label>Durée (jours)</label><input type="number" id="plan-m-jours" placeholder="30"/></div>
               <div class="adm-fg"><label>Label affiché</label><input id="plan-m-label" placeholder="Mensuel"/></div>
             </div>
+            <!-- Trimestriel -->
             <div>
-              <h4 style="font-size:.85rem;margin-bottom:12px;color:#94A3B8">Plan Annuel</h4>
-              <div class="adm-fg"><label>Prix (FCFA)</label><input type="number" id="plan-a-prix" placeholder="45000"/></div>
+              <h4 style="font-size:.82rem;margin-bottom:10px;color:#94A3B8;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:8px">📆 Plan Trimestriel</h4>
+              <div class="adm-fg"><label>Prix (FCFA)</label><input type="number" id="plan-t-prix" placeholder="15000"/></div>
+              <div class="adm-fg"><label>Durée (jours)</label><input type="number" id="plan-t-jours" placeholder="90"/></div>
+              <div class="adm-fg"><label>Label affiché</label><input id="plan-t-label" placeholder="Trimestriel"/></div>
+              <div class="adm-fg"><label>Badge promo</label><input id="plan-t-badge" placeholder="ex: -17%"/></div>
+            </div>
+            <!-- Annuel -->
+            <div>
+              <h4 style="font-size:.82rem;margin-bottom:10px;color:#E8730C;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:8px">🏆 Plan Annuel</h4>
+              <div class="adm-fg"><label>Prix (FCFA)</label><input type="number" id="plan-a-prix" placeholder="50000"/></div>
               <div class="adm-fg"><label>Durée (jours)</label><input type="number" id="plan-a-jours" placeholder="365"/></div>
               <div class="adm-fg"><label>Label affiché</label><input id="plan-a-label" placeholder="Annuel"/></div>
-              <div class="adm-fg"><label>Badge promo</label><input id="plan-a-badge" placeholder="ex: -25%"/></div>
+              <div class="adm-fg"><label>Badge promo</label><input id="plan-a-badge" placeholder="ex: -31%"/></div>
             </div>
           </div>
-          <button class="btn-p" onclick="savePlans()">💾 Enregistrer les plans</button>
+          <div style="margin-top:16px;padding:12px;background:rgba(232,115,12,.06);border:1px solid rgba(232,115,12,.15);border-radius:8px;font-size:.78rem;color:#94A3B8">
+            💳 <strong style="color:#E8730C">Numéros de paiement actifs :</strong>
+            Orange Money BF : <span style="color:#FF8C00;font-family:monospace" id="plan-orange-preview">—</span> &nbsp;|&nbsp;
+            Moov Money BF : <span style="color:#4FC3F7;font-family:monospace" id="plan-moov-preview">—</span>
+          </div>
+          <button class="btn-p" style="margin-top:16px" onclick="savePlans()">💾 Enregistrer les plans</button>
         </div>
       </div>
     </div>
@@ -1472,88 +1770,90 @@ window.addEventListener('load', checkApiStatus);
       </div>
     </div>
 
-    <!-- DEVELOPER / FIREBASE -->
+    <!-- DEVELOPER / SUPABASE -->
     <div id="as-developer" class="adm-section">
 
-      <!-- Statut Firebase -->
-      <div class="adm-card" style="margin-bottom:20px;border-color:rgba(255,160,0,0.25)">
-        <div class="adm-card-hdr" style="background:rgba(255,160,0,0.05)">
-          <h3>🔥 Firebase Firestore</h3>
-          <span id="adm-fb-status-badge" style="font-size:.75rem;color:#64748B">Non connecté</span>
+      <!-- Statut Supabase -->
+      <div class="adm-card" style="margin-bottom:20px;border-color:rgba(62,207,142,0.25)">
+        <div class="adm-card-hdr" style="background:rgba(62,207,142,0.05)">
+          <h3>⚡ Supabase</h3>
+          <span id="adm-sb-status-badge" style="font-size:.75rem;color:#64748B">Non vérifié</span>
         </div>
         <div class="adm-card-body" style="padding:20px">
           <p style="font-size:.82rem;color:#64748B;margin-bottom:20px">
-            Firebase Firestore synchronise toutes les données des commerces en temps réel sur tous les appareils.
-            Obtenez vos clés sur <a href="https://console.firebase.google.com" target="_blank" style="color:#E8730C">console.firebase.google.com</a>.
+            Supabase stocke toutes les données marchands (PostgreSQL). Les clés sont configurées
+            côté serveur (variables Vercel) — aucune clé n'est stockée dans cette interface.
+            Gérez votre projet sur <a href="https://supabase.com/dashboard" target="_blank" style="color:#3ECF8E">supabase.com/dashboard</a>.
           </p>
-          <div class="adm-grid2">
-            <div>
-              <div class="adm-fg">
-                <label>API Key</label>
-                <input type="password" id="adm-fb-apikey" placeholder="AIzaSy..."/>
-              </div>
-              <div class="adm-fg">
-                <label>Project ID</label>
-                <input id="adm-fb-projectid" placeholder="mon-projet-firebase"/>
-              </div>
-              <div class="adm-fg">
-                <label>App ID</label>
-                <input id="adm-fb-appid" placeholder="1:123456789:web:abc..."/>
-              </div>
+
+          <!-- Infos de connexion (lecture seule) -->
+          <div class="adm-grid2" style="margin-bottom:16px">
+            <div class="adm-fg">
+              <label>URL Supabase (Vercel env)</label>
+              <input readonly id="adm-sb-url-display" placeholder="Configuré sur Vercel" style="opacity:.6;cursor:default"/>
             </div>
-            <div>
-              <div class="adm-fg">
-                <label>Auth Domain</label>
-                <input id="adm-fb-authdomain" placeholder="projet.firebaseapp.com"/>
-                <small style="color:#475569;font-size:.72rem;margin-top:3px;display:block">Laissez vide pour auto-détecter depuis le Project ID</small>
-              </div>
-              <div class="adm-fg">
-                <label>Storage Bucket</label>
-                <input id="adm-fb-storagebucket" placeholder="projet.appspot.com"/>
-              </div>
-              <div class="adm-fg">
-                <label>Messaging Sender ID</label>
-                <input id="adm-fb-senderid" placeholder="123456789"/>
-              </div>
+            <div class="adm-fg">
+              <label>Statut connexion</label>
+              <input readonly id="adm-sb-conn-display" value="Cliquez sur Tester" style="opacity:.6;cursor:default"/>
             </div>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">
-            <button class="btn-p" onclick="saveAdminFirebaseConfig()" style="background:#FF9800;border-color:#FF9800">🔥 Connecter Firebase</button>
-            <button class="btn-g sm" onclick="testFirebaseConnection()">🔌 Tester la connexion</button>
-            <button class="btn-g sm" onclick="syncAllMerchantsToFirebase()">☁️ Sync global</button>
-            <button class="btn-d sm" onclick="disconnectFirebase()" style="font-size:.78rem;padding:6px 12px">⛔ Déconnecter</button>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn-p" onclick="testSupabaseConnection()" style="background:#3ECF8E;border-color:#3ECF8E;color:#000">🔌 Tester la connexion</button>
+            <button class="btn-g sm" onclick="syncAllToSupabase()">☁️ Sync global → Supabase</button>
           </div>
-          <div id="adm-fb-feedback" style="margin-top:12px;font-size:.82rem;display:none"></div>
+          <div id="adm-sb-feedback" style="margin-top:12px;font-size:.82rem;display:none"></div>
         </div>
       </div>
 
-      <!-- Règles Firestore -->
+      <!-- Schéma SQL -->
       <div class="adm-card" style="margin-bottom:20px;border-color:rgba(79,195,247,0.2)">
-        <div class="adm-card-hdr"><h3>📋 Règles de sécurité Firestore</h3></div>
+        <div class="adm-card-hdr"><h3>📋 Schéma SQL Supabase</h3></div>
         <div class="adm-card-body" style="padding:20px">
-          <p style="font-size:.82rem;color:#64748B;margin-bottom:12px">Copiez ces règles dans Firebase Console → Firestore → Règles :</p>
-          <pre id="fb-rules-pre" style="background:#0A0E16;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:16px;font-size:.75rem;color:#94A3B8;overflow-x:auto;white-space:pre-wrap;line-height:1.6">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Merchants — lecture/écriture selon merchant_id
-    match /merchants/{merchantId} {
-      allow read, write: if request.auth == null; // Mode demo
-    }
-    match /products/{id} {
-      allow read, write: if request.auth == null;
-    }
-    match /sales/{id} {
-      allow read, write: if request.auth == null;
-    }
-    match /clients/{id} {
-      allow read, write: if request.auth == null;
-    }
-    match /configs/{id} {
-      allow read, write: if request.auth == null;
-    }
-  }
-}</pre>
-          <button class="btn-g sm" style="margin-top:10px" onclick="copyFirebaseRules()">📋 Copier les règles</button>
+          <p style="font-size:.82rem;color:#64748B;margin-bottom:12px">
+            Copiez ce schéma dans <strong>Supabase Dashboard → SQL Editor</strong> pour créer les tables :
+          </p>
+          <pre style="background:#0A0E16;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:16px;font-size:.72rem;color:#94A3B8;overflow-x:auto;white-space:pre-wrap;line-height:1.6;max-height:300px">create table if not exists merchants (
+  id text primary key, nom_commerce text not null,
+  proprietaire text, telephone text unique,
+  password text, licence text default 'active',
+  licence_expiry timestamptz, actif boolean default true,
+  plan_type text default 'mensuel', created_at timestamptz default now()
+);
+create table if not exists configs (
+  id text primary key, merchant_id text references merchants(id),
+  couleur_theme text, devise text default 'FCFA',
+  pin text default '', created_at timestamptz default now()
+);
+create table if not exists products (
+  id text primary key, merchant_id text references merchants(id),
+  nom text, prix numeric, stock integer, categorie text,
+  created_at timestamptz default now()
+);
+create table if not exists clients (
+  id text primary key, merchant_id text references merchants(id),
+  nom text, telephone text, whatsapp text,
+  created_at timestamptz default now()
+);
+create table if not exists sales (
+  id text primary key, merchant_id text references merchants(id),
+  client_nom text, items jsonb, total numeric,
+  created_at timestamptz default now()
+);
+create table if not exists payments (
+  id text primary key, phone text, amount numeric,
+  transaction_id text unique, operator text,
+  merchant_id text, plan text, days integer,
+  statut text, created_at timestamptz default now()
+);
+-- Activer RLS sur toutes les tables
+alter table merchants enable row level security;
+alter table configs   enable row level security;
+alter table products  enable row level security;
+alter table clients   enable row level security;
+alter table sales     enable row level security;
+alter table payments  enable row level security;</pre>
+          <button class="btn-g sm" style="margin-top:10px" onclick="copySupabaseSchema()">📋 Copier le schéma</button>
         </div>
       </div>
 
@@ -1778,6 +2078,104 @@ function setTheme(t, el) {
   });
 })();
 
+// ── NOTIFICATIONS STOCK (Gérant → Propriétaire) ──────────────
+// Stockées dans localStorage sous la clé ds_stock_notifs_{merchant_id}
+const StockNotif = {
+  _key(mid) { return 'ds_stock_notifs_' + mid; },
+
+  _load(mid) {
+    try { return JSON.parse(localStorage.getItem(this._key(mid)) || '[]'); } catch(e) { return []; }
+  },
+
+  _save(mid, list) {
+    localStorage.setItem(this._key(mid), JSON.stringify(list.slice(0, 100)));
+  },
+
+  push(mid, { type, icon, title, detail }) {
+    const list = this._load(mid);
+    list.unshift({
+      id:     'n_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      type, icon, title, detail: detail || '',
+      unread: true,
+      ts:     new Date().toISOString()
+    });
+    this._save(mid, list);
+    this._updateBadge(mid);
+  },
+
+  markAllRead(mid) {
+    const list = this._load(mid).map(n => ({ ...n, unread: false }));
+    this._save(mid, list);
+    this._updateBadge(mid);
+  },
+
+  clear(mid) {
+    this._save(mid, []);
+    this._updateBadge(mid);
+  },
+
+  countUnread(mid) {
+    return this._load(mid).filter(n => n.unread).length;
+  },
+
+  _updateBadge(mid) {
+    const dot = document.getElementById('nav-notif-dot');
+    if (!dot) return;
+    const count = this.countUnread(mid);
+    dot.style.display = count > 0 ? 'block' : 'none';
+    dot.title = count > 0 ? count + ' nouvelle(s) activité(s) du gérant' : '';
+  },
+
+  render(mid) {
+    const list  = this._load(mid);
+    const panel = document.getElementById('dash-notif-panel');
+    const cnt   = document.getElementById('dash-notif-count');
+    const ul    = document.getElementById('dash-notif-list');
+    if (!panel) return;
+    if (!list.length) { panel.style.display = 'none'; return; }
+
+    panel.style.display = 'block';
+    const unread = list.filter(n => n.unread).length;
+    cnt.textContent = unread > 0 ? unread + ' non lu' + (unread > 1 ? 's' : '') : list.length + ' activité' + (list.length > 1 ? 's' : '');
+    cnt.style.background = unread > 0 ? '' : 'var(--text-muted)';
+
+    ul.innerHTML = list.map(n => {
+      const dt   = new Date(n.ts);
+      const now  = new Date();
+      const diff = Math.floor((now - dt) / 60000);
+      const lbl  = diff < 1 ? 'À l\'instant' : diff < 60 ? diff + ' min' : diff < 1440 ? Math.floor(diff/60) + 'h' : dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
+      return `<div class="notif-item ${n.unread ? 'unread' : 'read'}">
+        <span class="notif-ico">${n.icon}</span>
+        <div class="notif-body">
+          <div class="notif-title">${n.title}</div>
+          ${n.detail ? `<div class="notif-sub">${n.detail}</div>` : ''}
+        </div>
+        <span class="notif-time">${lbl}</span>
+      </div>`;
+    }).join('');
+  }
+};
+
+function clearStockNotifs() {
+  const m = Auth.current(); if (!m) return;
+  StockNotif.clear(m.id);
+  StockNotif.render(m.id);
+}
+
+// ---- CLIENT PANEL (POS) ----
+function toggleClientPanel() {
+  const panel = document.getElementById('cart-client-panel');
+  panel.classList.toggle('collapsed');
+}
+
+function updateCliPreview() {
+  const nom = document.getElementById('cart-cli-nom')?.value?.trim() || '';
+  const preview = document.getElementById('cli-preview-name');
+  const lbl = document.getElementById('cli-header-lbl');
+  if (preview) preview.textContent = nom ? '— ' + nom : '';
+  if (lbl) lbl.textContent = nom ? 'Client' : 'Client';
+}
+
 // ---- PIN SYSTEM ----
 let pinBuffer = '';
 let pinTarget = '';  // section to open after correct PIN
@@ -1796,7 +2194,7 @@ function reqPin(section) {
   let cfg = {};
   try { cfg = getConfig() || {}; } catch(e) { cfg = {}; }
 
-  if (!cfg.pin || cfg.pin.length < 4 || pinUnlocked) {
+  if (!cfg.pin || cfg.pin.length < 4 ) {
     showSection(section);
     return;
   }
@@ -1817,10 +2215,14 @@ function pinKey(k) {
     try { cfg = getConfig() || {}; } catch(e) { cfg = {}; }
     if (cfg.pin && DB._hash(pinBuffer) === cfg.pin) {
       closeMo('mo-pin');
-      pinUnlocked = true;
-      clearTimeout(pinUnlockTimer);
-      pinUnlockTimer = setTimeout(() => { pinUnlocked = false; }, 5 * 60 * 1000); // 5min
-      showSection(pinTarget);
+      pinUnlocked = false;
+      
+      // PIN déverrouillé pour toute la session — remis à false à la déconnexion
+      if (pinTarget === 'cancel_sale') {
+        _afterPinCancelSale();
+      } else {
+        showSection(pinTarget);
+      }
     } else {
       document.getElementById('pin-err').textContent = '❌ PIN incorrect. Réessayez.';
       setTimeout(() => { pinBuffer = ''; updatePinDots(); document.getElementById('pin-err').textContent=''; }, 800);
@@ -1849,7 +2251,7 @@ function savePin() {
   if (i !== -1) { cfgs[i].pin = DB._hash(np); DB.set('configs', cfgs); }
   document.getElementById('s-pin-new').value = '';
   document.getElementById('s-pin-conf').value = '';
-  pinUnlocked = true;
+  pinUnlocked = false;
   showToast('✅ PIN enregistré avec succès', 'success');
 }
 
@@ -1860,7 +2262,7 @@ function showSection(name) {
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
   document.getElementById('s-' + name)?.classList.add('active');
   document.querySelector('[data-s="' + name + '"]')?.classList.add('active');
-  const titles = {dashboard:'Dashboard',pos:'Point de Vente',products:'Produits',stock:'Gestion Stock',clients:'Clients',sales:'Ventes',settings:'Paramètres'};
+  const titles = {dashboard:'Dashboard',pos:'Point de Vente',quick:'Vente Rapide',caisse:'Caisse',products:'Produits',stock:'Gestion Stock',clients:'Clients',sales:'Ventes',settings:'Paramètres'};
   document.getElementById('tb-title').textContent = titles[name] || name;
   // Update expiry warning in topbar
   const curM = Auth.current();
@@ -1873,7 +2275,7 @@ function showSection(name) {
     }
   }
   document.getElementById('sidebar').classList.remove('mob-open');
-  ({dashboard:renderDashboard,pos:renderPOS,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales,settings:renderSettings})[name]?.();
+  ({dashboard:renderDashboard,pos:renderPOS,quick:renderQuick,caisse:renderCaisse,products:renderProducts,stock:renderStock,clients:renderClients,sales:renderSales,settings:renderSettings})[name]?.();
 }
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
@@ -1949,23 +2351,29 @@ function renderDashboard() {
   const m = Auth.current(); if (!m) return;
   const sales = DB.forM('sales', m.id), prods = DB.forM('products', m.id), clis = DB.forM('clients', m.id);
   const cfg = getConfig(), dev = cfg.devise || 'FCFA';
-  const ca = sales.reduce((s, v) => s + (v.total || 0), 0);
+  const validSales = sales.filter(s => s.statut !== 'cancelled');
+  const ca = validSales.reduce((s, v) => s + (v.total || 0), 0);
   document.getElementById('k-ca').textContent = fmtMoney(ca, dev);
-  document.getElementById('k-v').textContent = sales.length;
+  document.getElementById('k-v').textContent = validSales.length;
   document.getElementById('k-p').textContent = prods.length;
   document.getElementById('k-c').textContent = clis.length;
   document.getElementById('w-msg').textContent = cfg.message_accueil || 'Bienvenue, ' + m.proprietaire + ' !';
   document.getElementById('w-date').textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const recent = [...sales].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+  const recent = [...validSales].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
   document.getElementById('d-sales').innerHTML = recent.length ? recent.map(s =>
     '<div class="ri"><div><div class="ri-name">' + s.client_nom + '</div><div class="ri-date">' + new Date(s.created_at).toLocaleDateString('fr-FR') + '</div></div><div class="ri-amt">' + fmtMoney(s.total, dev) + '</div></div>'
   ).join('') : '<p class="empty">Aucune vente.</p>';
   const ps = {};
-  sales.forEach(s => (s.items || []).forEach(i => { if (!ps[i.nom]) ps[i.nom] = {t:0,q:0}; ps[i.nom].t += i.prix * i.qty; ps[i.nom].q += i.qty; }));
+  validSales.forEach(s => (s.items || []).forEach(i => { if (!ps[i.nom]) ps[i.nom] = {t:0,q:0}; ps[i.nom].t += i.prix * i.qty; ps[i.nom].q += i.qty; }));
   const top = Object.entries(ps).sort((a, b) => b[1].t - a[1].t).slice(0, 5);
   document.getElementById('d-top').innerHTML = top.length ? top.map(([n, d]) =>
     '<div class="ri"><div><div class="ri-name">' + n + '</div><div class="ri-date">' + d.q + ' vendu(s)</div></div><div class="ri-amt">' + fmtMoney(d.t, dev) + '</div></div>'
   ).join('') : '<p class="empty">Aucun produit vendu.</p>';
+  // Notifications stock — afficher puis marquer comme lues
+  StockNotif.render(m.id);
+  setTimeout(() => { StockNotif.markAllRead(m.id); StockNotif._updateBadge(m.id); }, 1500);
+  // Stats annulations
+  renderCancelStats();
 }
 
 // ---- PRODUITS ----
@@ -1985,17 +2393,34 @@ function saveProduct() {
   if (!nom || isNaN(prix)) { showToast('⚠️ Nom et prix requis', 'error'); return; }
   const stkVal = document.getElementById('p-stk').value;
   const rec = {nom, prix, stock: stkVal === '' ? null : parseInt(stkVal), categorie: document.getElementById('p-cat').value.trim()};
+  const isEdit = !!editProdId;
   editProdId ? DB.update('products', editProdId, rec, m.id) : DB.insert('products', rec, m.id);
   // Sync API
   const item = DB.forM('products', m.id).find(p => editProdId ? p.id === editProdId : p.nom === nom && p.prix === prix);
   if (item) API.post('sync', { merchant_id: m.id, collection: 'products', item }).catch(()=>{});
-  showToast('✅ Produit ' + (editProdId ? 'mis à jour' : 'ajouté'), 'success');
+  // Notification propriétaire
+  StockNotif.push(m.id, {
+    type:   isEdit ? 'product_edit' : 'product_add',
+    icon:   isEdit ? '✏️' : '➕',
+    title:  isEdit ? `Produit modifié : ${nom}` : `Nouveau produit : ${nom}`,
+    detail: `Prix : ${fmtMoney(prix, getConfig().devise||'FCFA')}${stkVal !== '' ? ' · Stock : ' + stkVal + ' unité(s)' : ''}`
+  });
+  showToast('✅ Produit ' + (isEdit ? 'mis à jour' : 'ajouté'), 'success');
   closeMo('mo-prod'); renderProducts(); renderPOS();
 }
 function deleteProduct(id) {
   const m = Auth.current(); if (!confirm('Supprimer ce produit ?')) return;
+  // Récupérer le nom avant suppression pour la notification
+  const prod = DB.forM('products', m.id).find(p => p.id === id);
   DB.delete('products', id, m.id);
   API.post('sync', { merchant_id: m.id, collection: 'products', delete: id }).catch(()=>{});
+  // Notification propriétaire
+  if (prod) StockNotif.push(m.id, {
+    type:   'product_del',
+    icon:   '🗑️',
+    title:  `Produit supprimé : ${prod.nom}`,
+    detail: `Prix : ${fmtMoney(prod.prix, getConfig().devise||'FCFA')}`
+  });
   showToast('🗑️ Supprimé', 'success'); renderProducts(); renderPOS();
 }
 function renderProducts() {
@@ -2076,7 +2501,20 @@ function addToCart(pid) {
 }
 function updCartQty(pid, d) { const i = cart.find(x => x.pid === pid); if (!i) return; i.qty = Math.max(0, i.qty + d); if (i.qty === 0) cart = cart.filter(x => x.pid !== pid); renderCart(); }
 function rmFromCart(pid) { cart = cart.filter(i => i.pid !== pid); renderCart(); }
-function clearCart() { cart = []; renderCart(); }
+function clearCart() {
+  cart = [];
+  // Réinitialiser le panneau client (replié + champs vidés)
+  const panel = document.getElementById('cart-client-panel');
+  if (panel) panel.classList.add('collapsed');
+  const nom = document.getElementById('cart-cli-nom');
+  const wa  = document.getElementById('cart-cli-wa');
+  const sel = document.getElementById('cart-cli-sel');
+  if (nom) nom.value = '';
+  if (wa)  wa.value  = '';
+  if (sel) sel.value = '';
+  updateCliPreview();
+  renderCart();
+}
 function cartTotal() { return cart.reduce((s, i) => s + i.prix * i.qty, 0); }
 function renderCart() {
   let cfg = {}; try { cfg = getConfig() || {}; } catch(e) {}
@@ -2159,7 +2597,235 @@ function setPrintFmt(fmt) {
   if (lastSale) showInvoice(lastSale.sale, lastSale.m, lastSale.cfg);
 }
 
-// ---- INVOICE ----
+// ============================================================
+// VENTE RAPIDE — Saisie par montant
+// ============================================================
+let qrLines = [];       // [{dept, montant}]
+let qrCurrent = '0';   // montant en cours de saisie
+
+function renderQuick() { /* rien à charger depuis DB */ }
+
+function qrKey(digit) {
+  if (qrCurrent === '0') qrCurrent = digit;
+  else if (qrCurrent.length < 9) qrCurrent += digit;
+  document.getElementById('qr-display').textContent = parseInt(qrCurrent).toLocaleString('fr-FR');
+}
+
+function qrDel() {
+  qrCurrent = qrCurrent.length > 1 ? qrCurrent.slice(0, -1) : '0';
+  document.getElementById('qr-display').textContent = parseInt(qrCurrent).toLocaleString('fr-FR');
+}
+
+function qrAddLine() {
+  const amt = parseInt(qrCurrent);
+  if (!amt || amt <= 0) { showToast('⚠️ Montant invalide', 'error'); return; }
+  qrLines.push({ dept: 'DEPT001', montant: amt });
+  qrCurrent = '0';
+  document.getElementById('qr-display').textContent = '0';
+  qrRenderLines();
+}
+
+function qrRemoveLine(idx) {
+  qrLines.splice(idx, 1);
+  qrRenderLines();
+}
+
+function qrReset() {
+  qrLines = [];
+  qrCurrent = '0';
+  document.getElementById('qr-display').textContent = '0';
+  qrRenderLines();
+}
+
+function qrRenderLines() {
+  const m = Auth.current();
+  const dev = (m ? getConfig()?.devise : null) || 'FCFA';
+  const total = qrLines.reduce((s, l) => s + l.montant, 0);
+  document.getElementById('qr-cnt').textContent = qrLines.length;
+  document.getElementById('qr-nb').textContent = qrLines.length;
+  document.getElementById('qr-total').textContent = fmtMoney(total, dev);
+  const el = document.getElementById('qr-lines');
+  if (!qrLines.length) {
+    el.innerHTML = '<p class="qr-empty">Aucun article</p>';
+    return;
+  }
+  el.innerHTML = qrLines.map((l, i) =>
+    '<div class="qr-line">' +
+      '<span class="ql-dept">' + l.dept + '</span>' +
+      '<span class="ql-amt">·' + l.montant.toLocaleString('fr-FR') + '</span>' +
+      '<button class="ql-del" onclick="qrRemoveLine(' + i + ')">✕</button>' +
+    '</div>'
+  ).join('');
+}
+
+// ============================================================
+// GESTION DE CAISSE
+// ============================================================
+function getCaisseData(mid) {
+  const key = 'caisse_' + mid;
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; }
+}
+function setCaisseData(mid, data) {
+  localStorage.setItem('caisse_' + mid, JSON.stringify(data));
+}
+
+function renderCaisse() {
+  const m = Auth.current(); if (!m) return;
+  const dev = getConfig()?.devise || 'FCFA';
+  const data = getCaisseData(m.id);
+  const ouverte = !!data.ouverte;
+
+  // Statut badge
+  document.getElementById('caisse-status-badge').className = 'caisse-status ' + (ouverte ? 'ouverte' : 'fermee');
+  document.getElementById('caisse-status-badge').textContent = ouverte ? '● Ouverte' : '● Fermée';
+  document.getElementById('caisse-fond-display').textContent = ouverte ? fmtMoney(data.fond || 0, dev) : '— ' + dev;
+  document.getElementById('btn-ouvrir-caisse').style.display = ouverte ? 'none' : '';
+  document.getElementById('btn-fermer-caisse').style.display = ouverte ? '' : 'none';
+
+  // Ventes du jour
+  const today = new Date().toLocaleDateString('fr-FR');
+  const sales = DB.forM('sales', m.id).filter(s => {
+    const d = new Date(s.created_at).toLocaleDateString('fr-FR');
+    return d === today && s.statut !== 'cancelled';
+  });
+  const totalVentes = sales.reduce((s, v) => s + (v.total || 0), 0);
+  const fond = ouverte ? (data.fond || 0) : 0;
+
+  document.getElementById('rpt-fond').textContent   = fmtMoney(fond, dev);
+  document.getElementById('rpt-ventes').textContent = fmtMoney(totalVentes, dev);
+  document.getElementById('rpt-nb').textContent     = sales.length;
+  document.getElementById('rpt-total').textContent  = fmtMoney(fond + totalVentes, dev);
+
+  // Tableau détail
+  const tbody = document.getElementById('rpt-tbody');
+  if (!sales.length) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty">Aucune vente aujourd\'hui</td></tr>';
+    return;
+  }
+  tbody.innerHTML = [...sales].reverse().map(s =>
+    '<tr>' +
+      '<td>' + new Date(s.created_at).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}) + '</td>' +
+      '<td>' + (s.client_nom || 'Client') + '</td>' +
+      '<td class="rt-val">' + fmtMoney(s.total, dev) + '</td>' +
+    '</tr>'
+  ).join('');
+}
+
+function ouvrirCaisse() {
+  document.getElementById('fond-input').value = '';
+  document.getElementById('mo-caisse').classList.remove('hidden');
+  setTimeout(() => document.getElementById('fond-input').focus(), 100);
+}
+
+function confirmerOuverture() {
+  const m = Auth.current(); if (!m) return;
+  const fond = parseInt(document.getElementById('fond-input').value) || 0;
+  setCaisseData(m.id, { ouverte: true, fond, ouverture: new Date().toISOString() });
+  closeMo('mo-caisse');
+  showToast('✅ Caisse ouverte avec ' + fmtMoney(fond, getConfig()?.devise||'FCFA') + ' de fond', 'success');
+  renderCaisse();
+}
+
+function fermerCaisse() {
+  const m = Auth.current(); if (!m) return;
+  const dev = getConfig()?.devise || 'FCFA';
+  const data = getCaisseData(m.id);
+  const today = new Date().toLocaleDateString('fr-FR');
+  const sales = DB.forM('sales', m.id).filter(s => {
+    const d = new Date(s.created_at).toLocaleDateString('fr-FR');
+    return d === today && s.statut !== 'cancelled';
+  });
+  const totalVentes = sales.reduce((s, v) => s + (v.total || 0), 0);
+  const total = (data.fond || 0) + totalVentes;
+  if (!confirm('Fermer la caisse ?\n\nFond: ' + fmtMoney(data.fond||0, dev) + '\nVentes: ' + fmtMoney(totalVentes, dev) + '\nTotal: ' + fmtMoney(total, dev))) return;
+  setCaisseData(m.id, { ...data, ouverte: false, fermeture: new Date().toISOString(), totalJour: total });
+  showToast('🔒 Caisse fermée. Total: ' + fmtMoney(total, dev), 'success');
+  renderCaisse();
+}
+
+function imprimerRapport() {
+  const m = Auth.current(); if (!m) return;
+  const dev = getConfig()?.devise || 'FCFA';
+  const data = getCaisseData(m.id);
+  const today = new Date().toLocaleDateString('fr-FR');
+  const sales = DB.forM('sales', m.id).filter(s => {
+    const d = new Date(s.created_at).toLocaleDateString('fr-FR');
+    return d === today && s.statut !== 'cancelled';
+  });
+  const totalVentes = sales.reduce((s, v) => s + (v.total || 0), 0);
+  const fond = data.fond || 0;
+  const lignes = [...sales].reverse().map(s =>
+    '<div class="therm-row"><span>' + new Date(s.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + ' ' + (s.client_nom||'Client') + '</span><span>' + fmtMoney(s.total,dev) + '</span></div>'
+  ).join('');
+  const html =
+    '<div class="therm-wrap" style="width:80mm">' +
+    '<div class="therm-center therm-bold" style="font-size:1.1em">' + m.nom_commerce + '</div>' +
+    '<div class="therm-center therm-sm">' + today + '</div>' +
+    '<hr class="therm-sep"/>' +
+    '<div class="therm-center therm-bold">RAPPORT DE CAISSE</div>' +
+    '<hr class="therm-sep"/>' +
+    '<div class="therm-row"><span>Fond d\'ouverture</span><span>' + fmtMoney(fond,dev) + '</span></div>' +
+    '<hr class="therm-sep"/>' +
+    (lignes || '<div class="therm-center therm-sm">Aucune vente</div>') +
+    '<hr class="therm-sep"/>' +
+    '<div class="therm-row"><span>Total ventes (' + sales.length + ')</span><span>' + fmtMoney(totalVentes,dev) + '</span></div>' +
+    '<div class="therm-row therm-bold"><span>TOTAL EN CAISSE</span><span>' + fmtMoney(fond+totalVentes,dev) + '</span></div>' +
+    '<hr class="therm-sep"/>' +
+    '<div class="therm-center therm-sm">Digitale Solution</div>' +
+    '</div>';
+  document.getElementById('inv-content').innerHTML = html;
+  document.getElementById('mo-inv').classList.remove('hidden');
+  setPrintFmt('80');
+}
+
+// ---- MONNAIE À RENDRE (Vente Rapide) ----
+function qrCalcRendu() {
+  const dev = getConfig()?.devise || 'FCFA';
+  const total = qrLines.reduce((s, l) => s + l.montant, 0);
+  const recu = parseInt(document.getElementById('qr-recu').value) || 0;
+  const box = document.getElementById('qr-monnaie-box');
+  const val = document.getElementById('qr-rendu-val');
+  if (!recu) { val.textContent = '—'; val.className = 'rendu-val'; box.className = 'qr-monnaie'; return; }
+  const rendu = recu - total;
+  if (rendu < 0) {
+    val.textContent = 'Insuffisant (' + fmtMoney(Math.abs(rendu), dev) + ' manquant)';
+    val.className = 'rendu-val insuf';
+    box.className = 'qr-monnaie insuf';
+  } else {
+    val.textContent = fmtMoney(rendu, dev);
+    val.className = 'rendu-val ok';
+    box.className = 'qr-monnaie ok';
+  }
+}
+
+
+function processQuickSale() {
+  const m = Auth.current(); if (!m) return;
+  const licSt = getLicStatus(m).st;
+  if (licSt === 'expired' || licSt === 'suspended') {
+    showToast('⚠️ Licence expirée. Renouvelez votre abonnement.', 'error');
+    openPaymentPage(); return;
+  }
+  if (!qrLines.length) { showToast('⚠️ Aucun article saisi', 'error'); return; }
+  const cfg = getConfig(), dev = cfg?.devise || 'FCFA';
+  const items = qrLines.map(l => ({ nom: l.dept, prix: l.montant, qty: 1 }));
+  const total = qrLines.reduce((s, l) => s + l.montant, 0);
+  const sale = DB.insert('sales', {
+    client_id: '', client_nom: 'Client', client_wa: '',
+    items, total, devise: dev
+  }, m.id);
+  // Sync en arrière-plan
+  API.post('sync', { merchant_id: m.id, collection: 'sales', item: sale }).catch(() => {});
+  // Afficher ticket thermique 80mm
+  setPrintFmt('80');
+  showInvoice(sale, m, cfg);
+  showToast('✅ Vente enregistrée !', 'success');
+  qrReset();
+  document.getElementById('qr-recu').value = '';
+  qrCalcRendu();
+  renderDashboard();
+}
+
 function showInvoice(sale, m, cfg) {
   window._lastSale = {sale, m, cfg};
   const dev = cfg?.devise || sale.devise || 'FCFA';
@@ -2170,6 +2836,14 @@ function showInvoice(sale, m, cfg) {
   if (waBtn) waBtn.style.display = waNum ? 'inline-flex' : 'none';
   currentSaleWA = waNum;
   currentSaleName = sale.client_nom;
+  // Bouton annulation — visible 15 min si vente non annulée
+  const cancelBtn = document.getElementById('inv-cancel-btn');
+  if (cancelBtn) {
+    const isRecent    = (Date.now() - new Date(sale.created_at).getTime()) < 15 * 60 * 1000;
+    const isCancelled = sale.statut === 'cancelled';
+    cancelBtn.style.display = (isRecent && !isCancelled) ? 'inline-flex' : 'none';
+    cancelBtn.dataset.saleId = sale.id;
+  }
   const fmt = currentPrintFmt;
   let html = '';
   if (fmt === 'a4') {
@@ -2179,6 +2853,13 @@ function showInvoice(sale, m, cfg) {
   }
   document.getElementById('inv-content').innerHTML = html;
   document.getElementById('mo-inv').classList.remove('hidden');
+}
+
+function cancelFromInvoice() {
+  const btn = document.getElementById('inv-cancel-btn');
+  if (!btn?.dataset.saleId) return;
+  closeMo('mo-inv');
+  openCancelModal(btn.dataset.saleId);
 }
 
 function buildA4Invoice(sale, m, cfg, num, ds, dev, waNum) {
@@ -2561,23 +3242,91 @@ function renderClients() {
 }
 
 // ---- VENTES ----
+// ════════════════════════════════════════════════════════
+//  SYSTÈME D'ANNULATION DE COMMANDE
+// ════════════════════════════════════════════════════════
+
+let currentSaleTab = 'all';           // onglet actif
+let pendingCancelId = null;           // ID vente en cours d'annulation
+let selectedMotif   = null;           // motif sélectionné
+
+// ── Onglets filtre ──────────────────────────────────────
+function setSaleTab(tab, btn) {
+  currentSaleTab = tab;
+  document.querySelectorAll('.sale-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSales();
+}
+
+// ── Rendu principal ventes ──────────────────────────────
 function renderSales() {
   const m = Auth.current(); if (!m) return;
-  const sales = DB.forM('sales', m.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const allSales = DB.forM('sales', m.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const q = (document.getElementById('sale-srch')?.value || '').toLowerCase();
-  const f = sales.filter(s => s.client_nom.toLowerCase().includes(q) || (s.items || []).some(i => i.nom.toLowerCase().includes(q)));
-  const dev = getConfig().devise || 'FCFA', tot = f.reduce((s, v) => s + v.total, 0);
-  document.getElementById('sale-total').textContent = 'Total : ' + fmtMoney(tot, dev);
-  document.getElementById('sale-tbody').innerHTML = f.length ? f.map((s, i) =>
-    '<tr><td><span style="color:var(--text-dim);font-size:.75rem">' + (f.length - i) + '</span></td>' +
-    '<td><strong>' + s.client_nom + '</strong></td>' +
-    '<td>' + (s.client_wa ? '<a href="https://wa.me/' + s.client_wa + '" target="_blank" style="color:#25D366;font-size:.82rem">+' + s.client_wa + '</a>' : '<span style="color:var(--text-dim)">—</span>') + '</td>' +
-    '<td><strong style="color:var(--accent)">' + fmtMoney(s.total, dev) + '</strong></td>' +
-    '<td style="font-size:.8rem;color:var(--text-muted)">' + new Date(s.created_at).toLocaleDateString('fr-FR') + '</td>' +
-    '<td><div class="tacts"><button class="tbtn" data-inv-sid="' + s.id + '">🧾 Facture</button>' +
-    (s.client_wa ? '<button class="tbtn wa" data-wa-sid="' + s.id + '">💬 WA</button>' : '') +
-    '</div></td></tr>'
-  ).join('') : '<tr><td colspan="6" class="empty">Aucune vente.</td></tr>';
+  const dev = getConfig().devise || 'FCFA';
+
+  // Compteurs onglets
+  const completed  = allSales.filter(s => s.statut !== 'cancelled');
+  const cancelled  = allSales.filter(s => s.statut === 'cancelled');
+  const el = id => document.getElementById(id);
+  if (el('tab-cnt-all'))       el('tab-cnt-all').textContent       = allSales.length;
+  if (el('tab-cnt-done'))      el('tab-cnt-done').textContent      = completed.length;
+  if (el('tab-cnt-cancelled')) el('tab-cnt-cancelled').textContent = cancelled.length;
+
+  // Filtre onglet
+  let poolByTab = currentSaleTab === 'cancelled' ? cancelled
+                : currentSaleTab === 'done'      ? completed
+                : allSales;
+
+  // Filtre recherche
+  const f = q ? poolByTab.filter(s =>
+    (s.client_nom||'').toLowerCase().includes(q) ||
+    (s.items||[]).some(i => (i.nom||'').toLowerCase().includes(q)) ||
+    (s.cancelled_reason||'').toLowerCase().includes(q)
+  ) : poolByTab;
+
+  // Total (ventes validées uniquement dans le chiffre)
+  const totValid = f.filter(s => s.statut !== 'cancelled').reduce((s, v) => s + (v.total||0), 0);
+  el('sale-total').textContent = currentSaleTab === 'cancelled'
+    ? f.length + ' annulation(s)'
+    : 'Total validé : ' + fmtMoney(totValid, dev);
+
+  // Rendu lignes
+  const now15 = Date.now() - 15 * 60 * 1000; // fenêtre gérant 15 min
+
+  el('sale-tbody').innerHTML = f.length ? f.map((s, i) => {
+    const isCancelled = s.statut === 'cancelled';
+    const isRecent    = !isCancelled && new Date(s.created_at).getTime() > now15;
+    const dateCell    = isCancelled
+      ? `<div style="font-size:.8rem;color:var(--text-muted)">${new Date(s.created_at).toLocaleDateString('fr-FR')}</div>
+         <div class="cancel-reason-chip" title="${(s.cancelled_detail||'')}">🚫 ${s.cancelled_reason||'—'}</div>`
+      : `<span style="font-size:.8rem;color:var(--text-muted)">${new Date(s.created_at).toLocaleDateString('fr-FR')}</span>`;
+    const amtColor = isCancelled ? 'var(--danger)' : 'var(--accent)';
+    const amtStyle = isCancelled ? 'text-decoration:line-through;opacity:.6' : '';
+    const rowClass = isCancelled ? ' class="sale-row-cancelled"' : '';
+
+    // Bouton annulation : gérant si ≤15min sans PIN, sinon PIN requis
+    const cancelBtn = isCancelled
+      ? `<span class="cancel-badge">🚫 Annulée</span>`
+      : isRecent
+        ? `<button class="tbtn" style="color:var(--danger)" data-cancel-sid="${s.id}">🚫 Annuler</button>`
+        : `<button class="tbtn" style="color:var(--danger)" data-cancel-pin-sid="${s.id}">🚫 Annuler</button>`;
+
+    return `<tr${rowClass}>
+      <td><span style="color:var(--text-dim);font-size:.75rem">${f.length - i}</span></td>
+      <td><strong>${s.client_nom||'—'}</strong></td>
+      <td>${s.client_wa ? `<a href="https://wa.me/${s.client_wa}" target="_blank" style="color:#25D366;font-size:.82rem">+${s.client_wa}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+      <td><strong style="color:${amtColor};${amtStyle}">${fmtMoney(s.total, dev)}</strong></td>
+      <td>${dateCell}</td>
+      <td><div class="tacts">
+        ${isCancelled ? '' : `<button class="tbtn" data-inv-sid="${s.id}">🧾 Facture</button>`}
+        ${s.client_wa && !isCancelled ? `<button class="tbtn wa" data-wa-sid="${s.id}">💬 WA</button>` : ''}
+        ${cancelBtn}
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="empty">${currentSaleTab === 'cancelled' ? 'Aucune annulation.' : 'Aucune vente.'}</td></tr>`;
+
+  // Listeners
   document.querySelectorAll('[data-inv-sid]').forEach(b => b.onclick = () => viewSaleInvoice(b.dataset.invSid));
   document.querySelectorAll('[data-wa-sid]').forEach(b => {
     b.onclick = () => {
@@ -2588,9 +3337,162 @@ function renderSales() {
       sendWA();
     };
   });
+  // Annulation directe gérant (≤15 min)
+  document.querySelectorAll('[data-cancel-sid]').forEach(b => {
+    b.onclick = () => openCancelModal(b.dataset.cancelSid);
+  });
+  // Annulation propriétaire (PIN requis)
+  document.querySelectorAll('[data-cancel-pin-sid]').forEach(b => {
+    b.onclick = () => {
+      pendingCancelId = b.dataset.cancelPinSid;
+      reqPin('cancel_sale');
+    };
+  });
 }
 
-// ---- SETTINGS ----
+// ── Modal annulation ────────────────────────────────────
+function openCancelModal(saleId) {
+  const m = Auth.current(); if (!m) return;
+  const s = DB.forM('sales', m.id).find(x => x.id === saleId);
+  if (!s) return;
+  pendingCancelId = saleId;
+  selectedMotif = null;
+
+  // Récap
+  const dev = getConfig().devise || 'FCFA';
+  const ref = 'DS-' + saleId.substr(-8).toUpperCase();
+  document.getElementById('cancel-ref').textContent    = ref;
+  document.getElementById('cancel-client').textContent = s.client_nom || '—';
+  document.getElementById('cancel-amount').textContent = fmtMoney(s.total, dev);
+  document.getElementById('cancel-detail').value = '';
+  document.getElementById('cancel-confirm-btn').disabled = true;
+
+  // Aperçu produits qui vont être restaurés
+  const items = s.items || [];
+  document.getElementById('cancel-items-preview').innerHTML = items.length
+    ? '📦 Sera remis en stock : ' + items.map(i => `<strong>${i.qty}×</strong> ${i.nom}`).join(' · ')
+    : '';
+
+  // Reset sélection motifs
+  document.querySelectorAll('.cancel-motif-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('mo-cancel').classList.remove('hidden');
+}
+
+function selectMotif(btn) {
+  document.querySelectorAll('.cancel-motif-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedMotif = btn.dataset.motif;
+  document.getElementById('cancel-confirm-btn').disabled = false;
+}
+
+function confirmCancelSale() {
+  if (!selectedMotif || !pendingCancelId) return;
+  const m = Auth.current(); if (!m) return;
+  const detail = document.getElementById('cancel-detail').value.trim();
+
+  // Mettre à jour la vente
+  const sales = DB.get('sales') || [];
+  const idx   = sales.findIndex(s => s.id === pendingCancelId && s.merchant_id === m.id);
+  if (idx === -1) { showToast('⚠️ Vente introuvable.', 'error'); return; }
+
+  const sale = sales[idx];
+  if (sale.statut === 'cancelled') { showToast('⚠️ Déjà annulée.', 'error'); return; }
+
+  // Restauration stock automatique
+  const allP = DB.get('products') || [];
+  (sale.items || []).forEach(ci => {
+    const pi = allP.findIndex(p => p.id === ci.pid && p.merchant_id === m.id);
+    if (pi !== -1 && allP[pi].stock !== null) allP[pi].stock += (ci.qty || 1);
+  });
+  DB.set('products', allP);
+
+  // Marquer vente annulée
+  sales[idx] = {
+    ...sale,
+    statut:            'cancelled',
+    cancelled_reason:  selectedMotif,
+    cancelled_detail:  detail,
+    cancelled_by:      pinUnlocked ? 'proprietaire' : 'gerant',
+    cancelled_at:      new Date().toISOString(),
+    stock_restored:    true
+  };
+  DB.set('sales', sales);
+
+  // Sync API
+  API.post('sync', { merchant_id: m.id, collection: 'sales',    item: sales[idx] }).catch(()=>{});
+  API.post('sync', { merchant_id: m.id, collection: 'products', items: DB.forM('products', m.id) }).catch(()=>{});
+
+  // Notification propriétaire
+  const dev = getConfig().devise || 'FCFA';
+  StockNotif.push(m.id, {
+    type:   'sale_cancelled',
+    icon:   '🚫',
+    title:  `Vente annulée — ${sale.client_nom}`,
+    detail: `${fmtMoney(sale.total, dev)} · Motif : ${selectedMotif}${detail ? ' — ' + detail : ''}`
+  });
+
+  closeMo('mo-cancel');
+  pendingCancelId = null; selectedMotif = null;
+  showToast('🚫 Vente annulée — stock restauré.', 'success');
+  renderSales();
+  renderDashboard();
+}
+
+// Appelé depuis reqPin quand target === 'cancel_sale'
+function _afterPinCancelSale() {
+  if (pendingCancelId) openCancelModal(pendingCancelId);
+}
+
+// ── Stats annulations dans le Dashboard ────────────────
+function renderCancelStats() {
+  const m = Auth.current(); if (!m) return;
+  const card = document.getElementById('dash-cancel-stats');
+  if (!card) return;
+
+  const sales     = DB.forM('sales', m.id);
+  const cancelled = sales.filter(s => s.statut === 'cancelled');
+
+  // Afficher la carte seulement si au moins 1 annulation
+  if (!cancelled.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  // Filtre mois courant
+  const now = new Date();
+  const thisMonth = cancelled.filter(s => {
+    const d = new Date(s.cancelled_at || s.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const dev       = getConfig().devise || 'FCFA';
+  const count     = thisMonth.length;
+  const amount    = thisMonth.reduce((s, v) => s + (v.total||0), 0);
+  const total     = sales.filter(s => {
+    const d = new Date(s.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+  const rate      = total ? ((count / total) * 100).toFixed(1) + '%' : '0%';
+
+  document.getElementById('cs-count').textContent  = count;
+  document.getElementById('cs-amount').textContent = fmtMoney(amount, dev);
+  document.getElementById('cs-rate').textContent   = rate;
+
+  // Barres motifs
+  const motifCounts = {};
+  cancelled.forEach(s => {
+    const r = s.cancelled_reason || 'Autre';
+    motifCounts[r] = (motifCounts[r] || 0) + 1;
+  });
+  const sorted = Object.entries(motifCounts).sort((a, b) => b[1] - a[1]);
+  const max    = sorted[0]?.[1] || 1;
+  document.getElementById('cs-motif-bars').innerHTML = sorted.map(([label, cnt]) => `
+    <div class="motif-bar-row">
+      <span class="motif-bar-label">${label}</span>
+      <div class="motif-bar-track"><div class="motif-bar-fill" style="width:${(cnt/max*100).toFixed(0)}%"></div></div>
+      <span class="motif-bar-count">${cnt}</span>
+    </div>`).join('');
+}
+
+
 function renderSettings() {
   const m = Auth.current(); if (!m) return;
   const cfg = getConfig();
@@ -2671,7 +3573,12 @@ async function loginMerchant(e) {
     const data = await API.post('login', { telephone: tel, password: pwd });
 
     // 2. Sauvegarder toutes les données localement
-    const { merchant, data: mData } = data;
+    const merchant = data.merchant;
+    const mData    = data.data;
+
+    if (!merchant || !merchant.id) {
+      throw new Error('Réponse serveur invalide — réessayez.');
+    }
 
     // Mettre à jour merchants local
     const merchants = DB.get('merchants');
@@ -2693,6 +3600,8 @@ async function loginMerchant(e) {
     sessionStorage.setItem('ds_m', JSON.stringify(merchant));
     showPage('page-app');
     showToast('✅ Connecté !', 'success');
+    // Badge notifications stock
+    if (typeof StockNotif !== 'undefined') StockNotif._updateBadge(merchant.id);
 
   } catch(err) {
     er.textContent = err.message;
@@ -2704,24 +3613,6 @@ async function loginMerchant(e) {
 }
 
 // Charger toutes les données d'un marchand depuis Firestore vers localStorage
-async function loadMerchantDataFromFirebase(merchantId) {
-  if (!window._fbDb || !window._fbLib) return;
-  const { collection, query, where, getDocs } = window._fbLib;
-  const collections = ['products', 'sales', 'clients', 'configs'];
-  for (const col of collections) {
-    try {
-      const q = query(collection(window._fbDb, col), where('merchant_id', '==', merchantId));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const remoteItems = snap.docs.map(d => d.data());
-        const all = DB.get(col) || [];
-        // Remplacer les données de ce marchand par celles de Firestore
-        const others = all.filter(r => r.merchant_id !== merchantId);
-        DB.set(col, [...others, ...remoteItems]);
-      }
-    } catch(e) { console.warn('Erreur chargement ' + col + ':', e); }
-  }
-}
 function demoLogin() {
   const ph = '0700000001';
   // Always wipe and recreate for clean demo
@@ -2767,7 +3658,10 @@ function showToast(msg, type) {
 
 // ---- UTILS ----
 function fmtMoney(n, dev) {
-  const f = (parseFloat(n) || 0).toLocaleString('fr-FR', {minimumFractionDigits:0,maximumFractionDigits:0});
+  // Formatage manuel pour éviter les caractères invisibles sur imprimantes thermiques
+  const num = Math.round(parseFloat(n) || 0);
+  const f = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
   const syms = {USD:'$',EUR:'€',GBP:'£',NGN:'₦'};
   return syms[dev] ? syms[dev] + f : f + ' ' + (dev || 'FCFA');
 }
@@ -2895,6 +3789,14 @@ function applyStockAdj() {
   API.post('sync', { merchant_id: m.id, collection: 'products', item: allP[idx] }).catch(()=>{});
   const reason = document.getElementById('stk-reason').value.trim();
   const opLabel = {add:'Entrée', sub:'Sortie', set:'Ajustement'}[stkOp];
+  const opIcon  = {add:'📦', sub:'📤', set:'🔧'}[stkOp];
+  // Notification propriétaire
+  StockNotif.push(m.id, {
+    type:   'stock_adj',
+    icon:   opIcon,
+    title:  `${opLabel} stock — ${p.nom}`,
+    detail: `${stkOp === 'set' ? 'Défini à' : stkOp === 'add' ? '+' + qty : '-' + qty} → ${newStock} unité(s)` + (reason ? ` · ${reason}` : '')
+  });
   showToast(`✅ ${opLabel} stock — ${p.nom} : ${newStock} unités${reason?' ('+reason+')':''}`, 'success');
   closeMo('mo-stk');
   renderStock();
@@ -2917,23 +3819,30 @@ const ADB = {
       this.set('config',{
         password_hash: DB._hash('admin2024'),
         token: 'DIGITALE',
-        orange_num: '22670000000',
-        orange_name: 'DIGITALE SOLUTION',
-        moov_num: '22675000000',
-        moov_name: 'DIGITALE SOLUTION',
-        wa_support: '22670000000',
+        // ── Numéros de paiement Burkina Faso ──
+        orange_num:    '76127809',
+        orange_name:   'DIGITALE SOLUTION',
+        orange_ussd:   '*144#',
+        orange_country:'bf',
+        moov_num:      '71682239',
+        moov_name:     'DIGITALE SOLUTION',
+        moov_ussd:     '*555#',
+        moov_country:  'bf',
+        wa_support:    '76127809',
+        // ── Tarifs d'abonnement ──
         plans:{
-          mensuel:{prix:5000,jours:30,label:'Mensuel'},
-          annuel:{prix:45000,jours:365,label:'Annuel',badge:'-25%'}
+          mensuel:    { prix:6000,  jours:30,  label:'Mensuel'     },
+          trimestriel:{ prix:15000, jours:90,  label:'Trimestriel', badge:'-17%' },
+          annuel:     { prix:50000, jours:365, label:'Annuel',      badge:'-31%' }
         }
       });
     }
-    if(!this.get('activity')) this.set('activity',[]);
-    if(!this.get('payment_requests')) this.set('payment_requests',[]);
+    if(!this.get('activity'))          this.set('activity',[]);
+    if(!this.get('payment_requests'))  this.set('payment_requests',[]);
   },
 
   getCfg(){return this.get('config')||{}},
-  getPlans(){return (this.getCfg().plans)||{mensuel:{prix:5000,jours:30,label:'Mensuel'},annuel:{prix:45000,jours:365,label:'Annuel',badge:'-25%'}}},
+  getPlans(){return (this.getCfg().plans)||{mensuel:{prix:6000,jours:30,label:'Mensuel'},trimestriel:{prix:15000,jours:90,label:'Trimestriel',badge:'-17%'},annuel:{prix:50000,jours:365,label:'Annuel',badge:'-31%'}}},
   getPayReqs(){return this.getArr('payment_requests')},
 
   addActivity(type,txt){
@@ -2976,7 +3885,7 @@ function adminSection(name){
   document.querySelectorAll('.adm-ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('as-'+name)?.classList.add('active');
   document.querySelector('[data-as="'+name+'"]')?.classList.add('active');
-  const titles={overview:'Vue d\'ensemble',merchants:'Gestion des commerces',payments:'Demandes de paiement',plans:'Plans & Tarifs',config:'Configuration',developer:'Développeur — Firebase',activity:'Journal d\'activité'};
+  const titles={overview:'Vue d\'ensemble',merchants:'Gestion des commerces',payments:'Demandes de paiement',plans:'Plans & Tarifs',config:'Configuration',developer:'Développeur — Supabase',activity:'Journal d\'activité'};
   document.getElementById('adm-title').textContent = titles[name]||name;
   const renders={overview:renderAdminOverview,merchants:renderAdminMerchants,payments:renderAdminPayments,plans:renderAdminPlans,config:renderAdminConfig,developer:renderAdminDeveloper,activity:renderAdminActivity};
   renders[name]?.();
@@ -3428,20 +4337,26 @@ function openPaymentPage(){
 }
 
 function renderPayPlanGrid(){
-  const plans=ADB.getPlans();
-  const m=Auth.current();
-  document.getElementById('pay-plan-grid').innerHTML=
-    '<div class="plan-opt '+(payState.plan==='mensuel'?'selected':'')+'" data-plan="mensuel" onclick="selectPlan(\'mensuel\')">'+
-      '<div class="po-name">'+plans.mensuel.label+'</div>'+
-      '<div class="po-price">'+fmtMoney(plans.mensuel.prix,'FCFA')+'</div>'+
-      '<div class="po-dur">'+plans.mensuel.jours+' jours d\'accès</div>'+
-    '</div>'+
-    '<div class="plan-opt '+(payState.plan==='annuel'?'selected':'')+'" data-plan="annuel" onclick="selectPlan(\'annuel\')">'+(plans.annuel.badge?'<div class="po-save">'+plans.annuel.badge+'</div>':'')+
-      '<div class="po-name">'+plans.annuel.label+'</div>'+
-      '<div class="po-price">'+fmtMoney(plans.annuel.prix,'FCFA')+'</div>'+
-      '<div class="po-dur">'+plans.annuel.jours+' jours d\'accès</div>'+
-    '</div>';
-  if(!payState.plan) selectPlan('mensuel');
+  const plans = ADB.getPlans();
+  const order = ['mensuel','trimestriel','annuel'];
+  const mRef  = plans.mensuel?.prix || 6000;
+
+  document.getElementById('pay-plan-grid').innerHTML = order.map(key => {
+    const p   = plans[key] || { prix:0, jours:30, label:key };
+    const sel = payState.plan === key ? 'selected' : '';
+    const badge = p.badge ? `<div class="po-save">${p.badge}</div>` : '';
+    const dureeM  = (p.jours || 30) / 30;
+    const saving  = key !== 'mensuel' ? Math.round(100 - ((p.prix / (mRef * dureeM)) * 100)) : 0;
+    return `<div class="plan-opt ${sel}" data-plan="${key}" onclick="selectPlan('${key}')">
+      ${badge}
+      <div class="po-name">${p.label || key}</div>
+      <div class="po-price">${fmtMoney(p.prix,'FCFA')}</div>
+      <div class="po-dur">${p.jours || 30} jours d'accès</div>
+      ${saving > 0 ? `<div style="font-size:.68rem;color:var(--success);margin-top:4px">💰 Économie ${saving}%</div>` : ''}
+    </div>`;
+  }).join('');
+
+  if (!payState.plan) selectPlan('mensuel');
 }
 
 function renderPayOpGrid(){
@@ -3560,11 +4475,11 @@ function submitPayment(){
 // initApp : charge l'interface commerce après login
 async function initApp(){
   const m = Auth.current(); if(!m){showPage('page-login');return;}
-  document.getElementById('sb-cname').textContent = m.nom_commerce;
-  document.getElementById('mm-name').textContent = m.proprietaire;
-  document.getElementById('mm-city').textContent = m.ville;
-  document.getElementById('mm-av').textContent = m.proprietaire.charAt(0).toUpperCase();
-  document.getElementById('cb-name').textContent = m.nom_commerce;
+  document.getElementById('sb-cname').textContent = m.nom_commerce || 'Mon Commerce';
+  document.getElementById('mm-name').textContent  = m.proprietaire || '—';
+  document.getElementById('mm-city').textContent  = m.ville || '—';
+  document.getElementById('mm-av').textContent    = (m.proprietaire||'?').charAt(0).toUpperCase();
+  document.getElementById('cb-name').textContent  = m.nom_commerce || 'Mon Commerce';
   const icons = {restaurant:'🍽️',boutique:'🛍️',hotel:'🏨',pharmacie:'💊',autre:'📦'};
   document.getElementById('cb-ico').textContent = icons[m.type]||'🏪';
   checkLicense(m);
@@ -3622,169 +4537,13 @@ function renewLicense(){
   openPaymentPage();
 }
 
-// --- FIREBASE INTEGRATION ---
-// Configuration Firebase — remplacez par vos propres valeurs Firebase Console
-const FIREBASE_CONFIG = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_PROJECT.firebaseapp.com",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_PROJECT.appspot.com",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
-};
+// --- SUPABASE INTEGRATION (Admin panel) ---
 
-// Indicateur de mode : 'local' = localStorage uniquement, 'firebase' = Firestore actif
-let FB_MODE = 'local';
-
-// Initialisation Firebase — utilise le SDK chargé statiquement dans le <head>
-function initFirebase() {
-  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'VOTRE_API_KEY') {
-    console.info('ℹ️ Firebase non configuré — mode local.');
-    return;
-  }
-  if (window._fbDb) return; // déjà initialisé
-
-  function tryInit() {
-    if (window._fbInit) {
-      window._fbInit(FIREBASE_CONFIG);
-    } else {
-      // SDK pas encore chargé — attendre l'événement
-      window.addEventListener('firebase-sdk-loaded', () => {
-        if (window._fbInit) window._fbInit(FIREBASE_CONFIG);
-      }, { once: true });
-    }
-  }
-
-  // Si page déjà chargée, tenter immédiatement
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    tryInit();
-  } else {
-    document.addEventListener('DOMContentLoaded', tryInit, { once: true });
-  }
-}
-// initFirebase() sera appelé après loadSavedFirebaseCfg (voir plus bas)
-
-// Wrapper DB étendu pour supporter Firestore (lecture/écriture asynchrone)
-// En mode firebase, les données sont synchronisées avec Firestore en plus du localStorage.
-const FBDB = {
-  // Synchronise une collection localStorage → Firestore
-  async syncToFirestore(collection, merchantId) {
-    if (!window._fbDb || !window._fbLib) return;
-    const { doc, setDoc } = window._fbLib;
-    if (!setDoc) { console.warn('setDoc non disponible'); return; }
-    const data = DB.get(collection) || [];
-    const items = merchantId ? data.filter(r => r.merchant_id === merchantId) : data;
-    if (!items.length) return;
-
-    // Timeout de 8 secondes par collection
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout — collection: ' + collection)), 8000)
-    );
-
-    const sync = Promise.all(items.map(item => {
-      const id = item.id || item.merchant_id || ('doc_' + Math.random().toString(36).substr(2,9));
-      return setDoc(doc(window._fbDb, collection, id), item)
-        .catch(e => console.warn('sync err ' + collection + ':', e.code || e.message));
-    }));
-
-    await Promise.race([sync, timeout]);
-  },
-
-  // Charger depuis Firestore → localStorage
-  async loadFromFirestore(collection) {
-    if (!window._fbDb || !window._fbLib) return;
-    const { collection:col, getDocs } = window._fbLib;
-    try {
-      const snap = await getDocs(col(window._fbDb, collection));
-      const items = snap.docs.map(d => d.data());
-      if (items.length) DB.set(collection, items);
-      return items;
-    } catch(e) { console.warn('Firebase load error:', e); return []; }
-  },
-
-  // Écouter en temps réel les changements d'une collection
-  listen(collectionName, merchantId, callback) {
-    if (!window._fbDb || !window._fbLib) return null;
-    const { collection:col, query, where, onSnapshot } = window._fbLib;
-    const q = merchantId
-      ? query(col(window._fbDb, collectionName), where('merchant_id', '==', merchantId))
-      : col(window._fbDb, collectionName);
-    return onSnapshot(q, snap => {
-      const items = snap.docs.map(d => d.data());
-      // Merge avec localStorage
-      const all = DB.get(collectionName) || [];
-      const otherItems = merchantId ? all.filter(r => r.merchant_id !== merchantId) : [];
-      DB.set(collectionName, [...otherItems, ...items]);
-      callback(items);
-    });
-  }
-};
-
-// Écoute temps réel activée après connexion
-let _fbListeners = [];
-function activateFirebaseSync() {
-  if (!window._fbDb || !window._fbLib) return;
-  const m = Auth.current(); if (!m) return;
-  // Stopper les anciens listeners
-  _fbListeners.forEach(u => { try { u(); } catch(e){} });
-  _fbListeners = [];
-
-  function refreshActiveView() {
-    const active = document.querySelector('.section.active');
-    if (!active) return;
-    const sec = active.id.replace('s-', '');
-    const renderers = {dashboard:renderDashboard, pos:renderPOS, products:renderProducts, stock:renderStock, clients:renderClients, sales:renderSales};
-    renderers[sec]?.();
-  }
-
-  // Activer les listeners temps réel pour chaque collection
-  const cols = ['products', 'sales', 'clients'];
-  cols.forEach(c => {
-    const unsub = FBDB.listen(c, m.id, () => refreshActiveView());
-    if (unsub) _fbListeners.push(unsub);
-  });
-  console.log('🔥 Synchronisation Firebase temps réel activée pour', m.nom_commerce);
-}
-
-// Déconnexion avec nettoyage Firebase listeners
-function logout() {
-  _fbListeners.forEach(u => { try { u(); } catch(e){} });
-  _fbListeners = [];
-  Auth.logout();
-  cart = [];
-  pinUnlocked = false;
-  clearTimeout(pinUnlockTimer);
-  showPage('page-landing');
-}
-
-// ---- ADMIN DEVELOPER SECTION ----
-function renderAdminDeveloper() {
-  // Statut Firebase
-  const badge = document.getElementById('adm-fb-status-badge');
-  const feedback = document.getElementById('adm-fb-feedback');
-  if (badge) {
-    if (window.FB_MODE === 'firebase' && window._fbDb) {
-      badge.textContent = '🟢 Connecté'; badge.style.color = '#2ECC71';
-    } else if (FIREBASE_CONFIG.apiKey !== 'VOTRE_API_KEY') {
-      badge.textContent = '⏳ Connexion en cours...'; badge.style.color = '#F39C12';
-    } else {
-      badge.textContent = '⚫ Non configuré'; badge.style.color = '#64748B';
-    }
-  }
-  // Pré-remplir les champs depuis config sauvegardée
-  const saved = localStorage.getItem('ds_firebase_cfg');
-  if (saved) {
-    try {
-      const cfg = JSON.parse(saved);
-      const f = id => document.getElementById(id);
-      if (f('adm-fb-projectid')) f('adm-fb-projectid').value = cfg.projectId || '';
-      if (f('adm-fb-authdomain')) f('adm-fb-authdomain').value = cfg.authDomain || '';
-      if (f('adm-fb-storagebucket')) f('adm-fb-storagebucket').value = cfg.storageBucket || '';
-      if (f('adm-fb-senderid')) f('adm-fb-senderid').value = cfg.messagingSenderId || '';
-      if (f('adm-fb-appid')) f('adm-fb-appid').value = cfg.appId || '';
-      if (f('adm-fb-apikey')) f('adm-fb-apikey').placeholder = cfg.apiKey ? '••••••••••••' : 'AIzaSy...';
-    } catch(e) {}
-  }
+function renderAdminDeveloper_sbStatus() {
+  const badge = document.getElementById('adm-sb-status-badge');
+  if (badge) { badge.textContent = 'Non vérifié'; badge.style.color = '#64748B'; }
+  const urlDisplay = document.getElementById('adm-sb-url-display');
+  if (urlDisplay) urlDisplay.value = 'Configuré sur Vercel (SUPABASE_URL)';
   // Stats DB locales
   const stats = document.getElementById('adm-db-stats');
   if (stats) {
@@ -3804,69 +4563,39 @@ function renderAdminDeveloper() {
   }
 }
 
-function saveAdminFirebaseConfig() {
-  const f = id => document.getElementById(id)?.value?.trim();
-  const apiKey = f('adm-fb-apikey');
-  const projectId = f('adm-fb-projectid');
-  const appId = f('adm-fb-appid');
-  if (!apiKey || !projectId) {
-    showAdminFbFeedback('⚠️ API Key et Project ID sont obligatoires.', 'error'); return;
-  }
-  const cfg = {
-    apiKey,
-    projectId,
-    authDomain: f('adm-fb-authdomain') || projectId + '.firebaseapp.com',
-    storageBucket: f('adm-fb-storagebucket') || projectId + '.appspot.com',
-    messagingSenderId: f('adm-fb-senderid') || '',
-    appId: appId || ''
-  };
-  localStorage.setItem('ds_firebase_cfg', JSON.stringify(cfg));
-  Object.assign(FIREBASE_CONFIG, cfg);
-
-  // Réinitialiser Firebase — forcer une nouvelle instance
-  window._fbDb = null;
-  window._fbLib = null;
-  window.FB_MODE = 'local';
-
-  if (window._fbInit) {
-    // SDK déjà chargé — initialiser directement
-    window._fbInit(FIREBASE_CONFIG);
-    showAdminFbFeedback('✅ Firebase connecté !', 'success');
-  } else {
-    // SDK pas encore chargé — attendre
-    showAdminFbFeedback('⏳ Chargement Firebase...', 'info');
-    window.addEventListener('firebase-sdk-loaded', () => {
-      if (window._fbInit) {
-        window._fbInit(FIREBASE_CONFIG);
-        showAdminFbFeedback('✅ Firebase connecté !', 'success');
-        renderAdminDeveloper();
-      }
-    }, { once: true });
-  }
-
-  ADB.addActivity('firebase_config', 'Configuration Firebase mise à jour — Project: ' + projectId);
-  renderAdminDeveloper();
-}
-
-async function testFirebaseConnection() {
-  showAdminFbFeedback('⏳ Test de connexion...', 'info');
-  if (!window._fbDb) {
-    showAdminFbFeedback('❌ Firebase non initialisé. Sauvegardez la config et rechargez la page.', 'error'); return;
-  }
+async function testSupabaseConnection() {
+  const fb = document.getElementById('adm-sb-feedback');
+  const badge = document.getElementById('adm-sb-status-badge');
+  const conn = document.getElementById('adm-sb-conn-display');
+  showAdminSbFeedback('⏳ Test en cours...', 'info');
   try {
-    const { collection, getDocs } = window._fbLib;
-    await getDocs(collection(window._fbDb, '_ping_test'));
-    showAdminFbFeedback('✅ Connexion Firebase réussie !', 'success');
+    const res = await fetch(API_BASE + '/api/health');
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) throw new Error('Réponse non-JSON — vérifiez Vercel Logs');
+    const data = await res.json();
+    const dbOk = data.checks?.db_connection?.startsWith('OK');
+    const modOk = data.checks?.supabase_module === 'OK';
+    if (dbOk) {
+      showAdminSbFeedback('✅ Supabase connecté ! ' + data.checks.db_connection, 'success');
+      if (badge) { badge.textContent = '🟢 Connecté'; badge.style.color = '#3ECF8E'; }
+      if (conn) conn.value = '✅ ' + data.checks.db_connection;
+    } else if (modOk) {
+      showAdminSbFeedback('⚠️ Module OK mais DB: ' + data.checks.db_connection, 'error');
+      if (conn) conn.value = '⚠️ ' + (data.checks.db_connection || 'Erreur');
+    } else {
+      showAdminSbFeedback('❌ Module Supabase absent : ' + data.checks.supabase_module, 'error');
+      if (conn) conn.value = '❌ Module manquant';
+    }
   } catch(e) {
-    showAdminFbFeedback('❌ Erreur : ' + e.message, 'error');
+    showAdminSbFeedback('❌ ' + e.message, 'error');
+    if (conn) conn.value = '❌ ' + e.message;
   }
 }
 
-async function syncAllMerchantsToFirebase() {
-  const btn = document.querySelector('[onclick="syncAllMerchantsToFirebase()"]');
+async function syncAllToSupabase() {
+  const btn = document.querySelector('[onclick="syncAllToSupabase()"]');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sync...'; }
-  showAdminFbFeedback('⏳ Préparation des données...', 'info');
-
+  showAdminSbFeedback('⏳ Préparation des données...', 'info');
   try {
     const data = {
       merchants: DB.get('merchants') || [],
@@ -3875,54 +4604,48 @@ async function syncAllMerchantsToFirebase() {
       clients:   DB.get('clients')   || [],
       configs:   DB.get('configs')   || [],
     };
-
     const total = Object.values(data).reduce((s, a) => s + a.length, 0);
-    showAdminFbFeedback('⏳ Envoi de ' + total + ' documents...', 'info');
-
+    showAdminSbFeedback('⏳ Envoi de ' + total + ' documents...', 'info');
     const result = await API.admin('sync_all', { data });
-
-    const details = Object.entries(result.results || {})
-      .map(([k, v]) => k + ':' + v).join(' | ');
-    showAdminFbFeedback('✅ Sync complète ! ' + details, 'success');
-    ADB.addActivity('firebase_sync', 'Sync globale via API — ' + total + ' docs');
-
+    const details = Object.entries(result.results || {}).map(([k,v]) => k+':'+v).join(' | ');
+    showAdminSbFeedback('✅ Sync complète — ' + details, 'success');
+    ADB.addActivity('supabase_sync', 'Sync globale Supabase — ' + total + ' docs');
   } catch(e) {
-    showAdminFbFeedback('❌ ' + e.message, 'error');
+    showAdminSbFeedback('❌ ' + e.message, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global'; }
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ Sync global → Supabase'; }
   }
 }
 
-function disconnectFirebase() {
-  if (!confirm('Déconnecter Firebase ? Les données locales seront conservées.')) return;
-  localStorage.removeItem('ds_firebase_cfg');
-  _fbListeners.forEach(u => { try { u(); } catch(e){} });
-  _fbListeners = [];
-  window.FB_MODE = 'local';
-  window._fbDb = null;
-  showAdminFbFeedback('🔌 Firebase déconnecté. Mode local activé.', 'info');
-  ADB.addActivity('firebase_disconnect', 'Firebase déconnecté');
-  renderAdminDeveloper();
-}
-
-function showAdminFbFeedback(msg, type) {
-  const el = document.getElementById('adm-fb-feedback');
+function showAdminSbFeedback(msg, type) {
+  const el = document.getElementById('adm-sb-feedback');
   if (!el) return;
-  const colors = {success:'#2ECC71', error:'#E74C3C', info:'#4FC3F7'};
+  const colors = {success:'#3ECF8E', error:'#E74C3C', info:'#4FC3F7'};
   el.style.color = colors[type] || '#94A3B8';
   el.textContent = msg;
   el.style.display = 'block';
-  if (type !== 'info') setTimeout(() => { el.style.display = 'none'; }, 5000);
+  if (type !== 'info') setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
-function copyFirebaseRules() {
-  const el = document.getElementById('fb-rules-pre');
+function copySupabaseSchema() {
+  const el = document.querySelector('#as-developer pre');
   if (!el) return;
   navigator.clipboard?.writeText(el.textContent).then(() => {
-    showAdminToast('📋 Règles copiées !', 'success');
+    showAdminToast('📋 Schéma copié !', 'success');
   }).catch(() => {
     showAdminToast('⚠️ Sélectionnez et copiez manuellement.', 'error');
   });
+}
+
+// Stub — Firebase retiré, fonctions gardées vides pour compatibilité
+function initFirebase() {}
+function activateFirebaseSync() {}
+function loadMerchantDataFromFirebase() {}
+
+
+// ---- ADMIN DEVELOPER SECTION ----
+function renderAdminDeveloper() {
+  renderAdminDeveloper_sbStatus();
 }
 
 function exportLocalDB() {
@@ -3971,9 +4694,352 @@ function renderFirebaseStatus() {}     // no-op
   }
 })();
 
+// ============================================================
+// PWA — Service Worker Registration
+// ============================================================
+
+/**
+ * Enregistre le Service Worker pour activer le mode offline et le caching.
+ * Doit être appelé au chargement de la page.
+ */
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) {
+    console.info('ℹ️ Service Worker non supporté sur ce navigateur.');
+    return null;
+  }
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    console.log('✅ Service Worker enregistré — scope:', registration.scope);
+
+    // Vérifier les mises à jour du SW
+    registration.addEventListener('updatefound', () => {
+      const newSW = registration.installing;
+      newSW?.addEventListener('statechange', () => {
+        if (newSW.statechange === 'installed' && navigator.serviceWorker.controller) {
+          showToast('🔄 Mise à jour disponible — rechargez la page pour l\'appliquer.', 'success');
+        }
+      });
+    });
+
+    // Écouter les messages du SW (sync terminée, etc.)
+    navigator.serviceWorker.addEventListener('message', onSwMessage);
+
+    return registration;
+  } catch(err) {
+    console.warn('⚠️ Enregistrement SW échoué:', err.message);
+    return null;
+  }
+}
+
+/** Gère les messages reçus depuis le Service Worker */
+function onSwMessage(event) {
+  const { type, synced, pending } = event.data || {};
+
+  if (type === 'SYNC_COMPLETE') {
+    console.log(`[App] Sync SW terminée — ${synced} réussies, ${pending} en attente`);
+    if (synced > 0) {
+      showToast(`✅ ${synced} action(s) synchronisée(s) avec le serveur !`, 'success');
+    }
+    updateOfflineQueueBadge(pending);
+    if (pending === 0) {
+      updateConnIndicator('online');
+    }
+  }
+
+  if (type === 'QUEUE_SIZE') {
+    updateOfflineQueueBadge(event.data.size);
+  }
+}
+
+// ============================================================
+// PWA — Installation (Add to Home Screen)
+// ============================================================
+
+let _deferredInstallPrompt = null;
+
+// Capturer l'événement beforeinstallprompt pour afficher le bouton personnalisé
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); // Empêcher l'invite automatique
+  _deferredInstallPrompt = e;
+
+  // Afficher le bouton d'installation personnalisé
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) {
+    btn.classList.add('visible');
+    setTimeout(() => btn.classList.remove('visible'), 15000); // Masquer après 15s
+  }
+  console.log('📲 Application installable — bouton affiché');
+});
+
+// Déclencher l'installation quand l'utilisateur clique
+async function installPWA() {
+  if (!_deferredInstallPrompt) {
+    showToast('ℹ️ Application déjà installée ou installation non disponible.', 'success');
+    return;
+  }
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  console.log('PWA install outcome:', outcome);
+  _deferredInstallPrompt = null;
+  document.getElementById('pwa-install-btn')?.classList.remove('visible');
+  if (outcome === 'accepted') {
+    showToast('🎉 Application installée ! Retrouvez-la sur votre écran d\'accueil.', 'success');
+  }
+}
+
+// Événement déclenché quand l'app est installée
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  document.getElementById('pwa-install-btn')?.classList.remove('visible');
+  showToast('✅ Digitale Solution installée avec succès !', 'success');
+});
+
+// ============================================================
+// OFFLINE DETECTION — indicateurs visuels temps réel
+// ============================================================
+
+/** Met à jour l'indicateur de connexion dans la topbar */
+function updateConnIndicator(status, label) {
+  const el = document.getElementById('conn-indicator');
+  const lbl = document.getElementById('conn-label');
+  if (!el) return;
+
+  el.className = status; // 'online' | 'offline' | 'syncing'
+  const dot = el.querySelector('.conn-dot');
+
+  const states = {
+    online:  { label: 'En ligne',    dot: '' },
+    offline: { label: 'Hors ligne',  dot: 'pulse' },
+    syncing: { label: 'Synchro...', dot: 'pulse' }
+  };
+  const s = states[status] || states.online;
+  if (lbl) lbl.textContent = label || s.label;
+  if (dot) dot.className = 'conn-dot ' + s.dot;
+}
+
+/** Affiche ou masque la bannière hors ligne */
+function showOfflineBanner(show) {
+  const banner = document.getElementById('offline-banner');
+  if (!banner) return;
+  if (show) banner.classList.add('show');
+  else       banner.classList.remove('show');
+}
+
+/** Met à jour le badge de la file d'attente hors ligne */
+function updateOfflineQueueBadge(count) {
+  const badge = document.getElementById('offline-queue-count');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count + ' action(s) en attente';
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/** Gestionnaire : connexion Internet perdue */
+function onNetworkOffline() {
+  console.log('[App] 📡 Connexion perdue — mode hors ligne activé');
+  showOfflineBanner(true);
+  updateConnIndicator('offline');
+  showToast('📡 Mode hors ligne activé. Vos actions seront synchronisées au retour.', 'error');
+
+  // Enregistrer l'heure de déconnexion
+  localStorage.setItem('ds_offline_since', new Date().toISOString());
+}
+
+/** Gestionnaire : connexion Internet restaurée */
+async function onNetworkOnline() {
+  console.log('[App] ✅ Connexion restaurée — synchronisation en cours...');
+  updateConnIndicator('syncing', 'Synchro...');
+  showToast('🔄 Connexion restaurée ! Synchronisation en cours...', 'success');
+
+  // Déclencher le flush de la file d'attente
+  await triggerSync();
+
+  // Calculer la durée hors ligne
+  const since = localStorage.getItem('ds_offline_since');
+  if (since) {
+    const duration = Math.round((Date.now() - new Date(since)) / 60000);
+    if (duration > 0) {
+      showToast(`✅ Reconnecté — ${duration} min hors ligne`, 'success');
+    }
+    localStorage.removeItem('ds_offline_since');
+  }
+
+  showOfflineBanner(false);
+  updateConnIndicator('online');
+}
+
+/** Déclenche la synchronisation via Service Worker */
+async function triggerSync() {
+  // Option 1 : Background Sync API (Chrome Android)
+  if ('serviceWorker' in navigator && 'sync' in self.registration) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.sync.register('ds-sync-queue');
+      console.log('[App] Background Sync enregistré');
+      return;
+    } catch(e) {
+      console.warn('[App] Background Sync non disponible:', e.message);
+    }
+  }
+
+  // Option 2 : Message direct au SW
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'FORCE_SYNC' });
+    console.log('[App] Sync manuelle envoyée au SW');
+    return;
+  }
+
+  // Option 3 : Sync directe depuis l'app (sans SW)
+  await syncOfflineQueue();
+}
+
+/** Synchronise manuellement (bouton de la bannière) */
+async function manualSync() {
+  if (!navigator.onLine) {
+    showToast('⚠️ Toujours hors ligne. Vérifiez votre connexion.', 'error');
+    return;
+  }
+  showToast('🔄 Synchronisation en cours...', 'success');
+  updateConnIndicator('syncing', 'Synchro...');
+  await triggerSync();
+}
+
+// ============================================================
+// OFFLINE QUEUE CÔTÉ APP (fallback sans SW)
+// ============================================================
+
+const OfflineQueue = {
+  STORE: 'ds_offline_queue',
+
+  // Récupère toutes les actions en attente depuis localStorage
+  getAll() {
+    try { return JSON.parse(localStorage.getItem(this.STORE) || '[]'); } catch { return []; }
+  },
+
+  // Ajoute une action à la file
+  add(action) {
+    const queue = this.getAll();
+    const item = { ...action, id: Date.now() + '_' + Math.random().toString(36).substr(2,4), queued_at: new Date().toISOString() };
+    queue.push(item);
+    localStorage.setItem(this.STORE, JSON.stringify(queue));
+    updateOfflineQueueBadge(queue.length);
+    console.log('[OfflineQueue] Action mise en file:', action.type, '— Total:', queue.length);
+    return item;
+  },
+
+  // Retire des actions par IDs
+  remove(ids) {
+    const queue = this.getAll().filter(i => !ids.includes(i.id));
+    localStorage.setItem(this.STORE, JSON.stringify(queue));
+    updateOfflineQueueBadge(queue.length);
+  },
+
+  count() { return this.getAll().length; }
+};
+
+/** Flush la file d'attente app-side (sans Service Worker) */
+async function syncOfflineQueue() {
+  const queue = OfflineQueue.getAll();
+  if (!queue.length) {
+    console.log('[App] File d\'attente vide.');
+    updateConnIndicator('online');
+    return;
+  }
+
+  console.log(`[App] Synchronisation de ${queue.length} action(s)...`);
+  const syncedIds = [];
+  let errors = 0;
+
+  for (const item of queue) {
+    try {
+      const res = await fetch(item.url, {
+        method:  item.method || 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(item.body)
+      });
+      if (res.ok) {
+        syncedIds.push(item.id);
+        console.log('[App] ✅ Sync:', item.type || item.url);
+      } else {
+        errors++;
+      }
+    } catch(e) {
+      errors++; // Encore hors ligne
+    }
+  }
+
+  OfflineQueue.remove(syncedIds);
+  updateConnIndicator(errors > 0 ? 'offline' : 'online');
+
+  if (syncedIds.length > 0) {
+    showToast(`✅ ${syncedIds.length} action(s) synchronisée(s).${errors > 0 ? ` ${errors} en attente.` : ''}`, 'success');
+  }
+}
+
+/** Initialise le système offline (listeners + état initial) */
+function initOfflineSystem() {
+  // Listeners événements réseau
+  window.addEventListener('offline', onNetworkOffline);
+  window.addEventListener('online',  onNetworkOnline);
+
+  // État initial
+  if (navigator.onLine) {
+    updateConnIndicator('online');
+    showOfflineBanner(false);
+    // Vérifier et flush la queue au démarrage si des données sont en attente
+    if (OfflineQueue.count() > 0) {
+      console.log('[App] Actions en attente au démarrage — flush automatique...');
+      setTimeout(syncOfflineQueue, 2000); // Délai léger pour laisser l'app s'initialiser
+    }
+  } else {
+    updateConnIndicator('offline');
+    showOfflineBanner(true);
+  }
+
+  updateOfflineQueueBadge(OfflineQueue.count());
+}
+
+// ============================================================
+// API CLIENT AMÉLIORÉ — wrapper offline-aware
+// ============================================================
+
+// Surcharge de API.post pour gérer le mode hors ligne
+const _originalAPIPost = API.post.bind(API);
+API.post = async function(endpoint, body) {
+  try {
+    const res = await _originalAPIPost(endpoint, body);
+    if (res.offline) {
+      console.log('[API] Réponse offline pour:', endpoint);
+      return res;
+    }
+    return res;
+  } catch(err) {
+    // Ne mettre en file d'attente QUE les vraies erreurs réseau (TypeError: Failed to fetch)
+    // PAS les erreurs serveur (500, HTML inattendu, JSON invalide)
+    const isNetworkError = !navigator.onLine ||
+      (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch'));
+
+    if (isNetworkError) {
+      const item = OfflineQueue.add({
+        type: 'api_post',
+        url:  API_BASE + '/api/' + endpoint,
+        method: 'POST',
+        body
+      });
+      console.log('[API] Requête offline mise en file:', endpoint);
+      return { success: true, offline: true, queued: true, queue_id: item.id };
+    }
+    // Erreur serveur réelle — on la propage pour que l'UI puisse l'afficher
+    console.error('[API] Erreur serveur sur', endpoint, ':', err.message);
+    throw err;
+  }
+};
+
 // --- FINAL INIT ---
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 Démarrage de Digitale Solution...');
+document.addEventListener('DOMContentLoaded', async () => {  console.log('🚀 Démarrage de Digitale Solution...');
 
   // 1. Appliquer le thème
   const savedTheme = localStorage.getItem('ds_theme') || 'dark';
@@ -3982,6 +5048,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2. Init admin defaults
   if (typeof ADB !== 'undefined') ADB.initDefaults();
+
+  // 3. Init Service Worker (PWA + offline)
+  registerServiceWorker().then(reg => {
+    if (reg) console.log('📲 PWA prête — mode offline disponible');
+  });
+
+  // 4. Init système offline (indicateurs, listeners, queue)
+  initOfflineSystem();
 
   // 3. Vérifier admin token dans URL
   const params = new URLSearchParams(window.location.search);
@@ -4011,103 +5085,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (m) {
     showPage('page-app');
     if (typeof renderDashboard !== 'undefined') renderDashboard();
-    // Activer la sync Firebase si disponible
-    window.addEventListener('firebase-ready', () => {
-      activateFirebaseSync();
-    });
-    activateFirebaseSync();
+    // Badge notifications stock au démarrage
+    if (typeof StockNotif !== 'undefined') StockNotif._updateBadge(m.id);
   } else {
     showPage('page-landing');
   }
   if (typeof renderCart !== 'undefined') renderCart();
 });
 </script>
-<script>
-// ============================================================
-// PWA — Service Worker + Install Prompt
-// ============================================================
-(function registerSW() {
-  if (!('serviceWorker' in navigator)) return;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then(reg => {
-        console.log('✅ SW enregistré:', reg.scope);
-        // Vérifier les mises à jour
-        reg.addEventListener('updatefound', () => {
-          const sw = reg.installing;
-          sw.addEventListener('statechange', () => {
-            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-              // Nouvelle version disponible
-              showToast('🔄 Mise à jour disponible — rechargez la page', 'success');
-            }
-          });
-        });
-      })
-      .catch(err => console.warn('SW echec:', err));
-    // Écouter les messages du SW
-    navigator.serviceWorker.addEventListener('message', event => {
-      if (event.data?.type === 'SYNC_COMPLETE') {
-        if (event.data.synced > 0) showToast('☁️ ' + event.data.synced + ' opération(s) synchronisée(s)', 'success');
-      }
-    });
-  });
-})();
 
-// Admin sidebar mobile toggle
-function toggleAdminSidebar() {
-  const sb = document.querySelector('.adm-sb');
-  if (!sb) return;
-  sb.classList.toggle('mob-open');
-  // Overlay pour fermer
-  const existing = document.getElementById('adm-overlay');
-  if (sb.classList.contains('mob-open') && !existing) {
-    const ov = document.createElement('div');
-    ov.id = 'adm-overlay';
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;';
-    ov.onclick = () => { sb.classList.remove('mob-open'); ov.remove(); };
-    document.body.appendChild(ov);
-  } else {
-    existing?.remove();
-  }
-}
-
-// PWA Install Prompt
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  // Afficher une suggestion d'installation si on est sur la landing
-  setTimeout(() => {
-    const landing = document.getElementById('page-landing');
-    if (landing && landing.classList.contains('active') && !localStorage.getItem('ds_pwa_dismissed')) {
-      const banner = document.createElement('div');
-      banner.id = 'pwa-banner';
-      banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border-accent);border-radius:var(--r);padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:var(--shadow-a);max-width:calc(100vw - 40px);animation:tIn .3s ease';
-      banner.innerHTML = '<span style="font-size:1.4rem">📱</span><div><strong style="font-size:.88rem">Installer l'app</strong><br/><span style="font-size:.75rem;color:var(--text-muted)">Accès rapide depuis votre écran d'accueil</span></div><button onclick="installPWA()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 16px;font-weight:600;font-size:.82rem;cursor:pointer;white-space:nowrap">Installer</button><button onclick="dismissPWA()" style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px">✕</button>';
-      document.body.appendChild(banner);
-    }
-  }, 3000);
-});
-
-function installPWA() {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  deferredPrompt.userChoice.then(choice => {
-    if (choice.outcome === 'accepted') showToast('🎉 App installée !', 'success');
-    deferredPrompt = null;
-    dismissPWA();
-  });
-}
-
-function dismissPWA() {
-  localStorage.setItem('ds_pwa_dismissed', '1');
-  document.getElementById('pwa-banner')?.remove();
-}
-
-window.addEventListener('appinstalled', () => {
-  showToast('✅ Digitale Solution installée sur votre appareil !', 'success');
-  deferredPrompt = null;
-});
-</script>
 </body>
 </html>
