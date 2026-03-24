@@ -3052,77 +3052,106 @@ function escEncode(str) {
 function buildEscPos(sale, m, cfg) {
   const dev = cfg?.devise || sale.devise || 'FCFA';
   const num = 'DS-' + sale.id.substr(-8).toUpperCase();
-  const date = new Date(sale.created_at).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  const W = 48; // largeur 80mm ≈ 48 chars
 
-  function line(txt) { return [...escEncode(txt.substring(0, W)), 0x0A]; }
-  function center(txt) {
-    const pad = Math.max(0, Math.floor((W - txt.length) / 2));
-    return line(' '.repeat(pad) + txt);
-  }
-  function right(left, right) {
-    const pad = Math.max(1, W - left.length - right.length);
-    return line(left + ' '.repeat(pad) + right);
-  }
-  function separator() { return line('-'.repeat(W)); }
+  // ---- DATE robuste — sans dépendance locale navigateur ----
+  const _rawD = sale.created_at ? new Date(sale.created_at) : new Date();
+  const _d = isNaN(_rawD.getTime()) ? new Date() : _rawD;
+  const date = String(_d.getDate()).padStart(2,'0') + '/' +
+               String(_d.getMonth()+1).padStart(2,'0') + '/' +
+               _d.getFullYear() + ' ' +
+               String(_d.getHours()).padStart(2,'0') + ':' +
+               String(_d.getMinutes()).padStart(2,'0');
+
+  // W=32 : compatible 58mm ET 80mm (32 cols minimum garanti)
+  const W = 32;
 
   const ESC = 0x1B, GS = 0x1D;
+
+  // line() : encode + tronque + LF
+  function line(txt) { return [...escEncode(txt.substring(0, W)), 0x0A]; }
+
+  // center() : centrage HARDWARE via ESC a
+  function center(txt) {
+    return [ESC, 0x61, 0x01, ...escEncode(txt.substring(0, W)), 0x0A, ESC, 0x61, 0x00];
+  }
+
+  // right() : colonne gauche + colonne droite sur W colonnes
+  function right(leftTxt, rightTxt) {
+    const pad = Math.max(1, W - leftTxt.length - rightTxt.length);
+    return line(leftTxt + ' '.repeat(pad) + rightTxt);
+  }
+
+  // alignRight() : texte seul aligné à droite (sans colonne gauche)
+  function alignRight(txt) {
+    const pad = Math.max(0, W - txt.length);
+    return line(' '.repeat(pad) + txt);
+  }
+
+  function separator() { return line('-'.repeat(W)); }
+
   const cmd = [];
 
   // Init + charset
-  cmd.push(ESC, 0x40);           // ESC @ — reset
+  cmd.push(ESC, 0x40);           // ESC @ — reset complet
   cmd.push(ESC, 0x74, 0x10);    // charset PC437
 
-  // En-tête — nom commerce en GRAS + GRAND
-  cmd.push(ESC, 0x61, 0x01);    // centrer
-  cmd.push(GS,  0x21, 0x11);    // double taille
-  cmd.push(...escEncode(m.nom_commerce), 0x0A);
-  cmd.push(GS,  0x21, 0x00);    // taille normale
+  // --- EN-TÊTE : nom commerce en GRAS double-hauteur (une seule fois)
+  cmd.push(ESC, 0x61, 0x01);             // centrer
+  cmd.push(ESC, 0x45, 0x01);             // gras ON
+  cmd.push(ESC, 0x21, 0x10);             // hauteur x2 via ESC ! (compatible 58mm, W inchangé)
+  cmd.push(...line(m.nom_commerce));
+  cmd.push(ESC, 0x21, 0x00);             // taille normale
+  cmd.push(ESC, 0x45, 0x00);             // gras OFF
+  cmd.push(ESC, 0x61, 0x00);             // retour gauche
   cmd.push(...center(m.proprietaire + ' - ' + m.ville));
   cmd.push(...center('Tel: ' + m.telephone));
   cmd.push(...separator());
 
-  // Infos facture
-  cmd.push(ESC, 0x61, 0x00);    // gauche
+  // --- INFOS FACTURE (gauche)
   cmd.push(...line('Facture : ' + num));
   cmd.push(...line('Date    : ' + date));
   cmd.push(...line('Client  : ' + (sale.client_nom || 'Client')));
   cmd.push(...separator());
 
-  // En-tête tableau
-  cmd.push(ESC, 0x45, 0x01);    // gras ON
-  cmd.push(...right('ARTICLE  QTE', 'TOTAL'));
-  cmd.push(ESC, 0x45, 0x00);    // gras OFF
+  // --- EN-TÊTE TABLEAU
+  cmd.push(ESC, 0x45, 0x01);             // gras ON
+  cmd.push(...right('ARTICLE', 'TOTAL'));
+  cmd.push(ESC, 0x45, 0x00);             // gras OFF
   cmd.push(...separator());
 
-  // Articles
+  // --- ARTICLES
   (sale.items || []).forEach(item => {
-    const nomTronc = item.nom.substring(0, 22);
-    const qteStr  = 'x' + item.qty;
     const totStr  = fmtMoney(item.prix * item.qty, dev);
-    cmd.push(...right(nomTronc + ' ' + qteStr, totStr));
-    // Prix unitaire si qty > 1
+    // Tronquer le nom pour laisser de la place au montant + 1 espace
+    const maxNom  = W - totStr.length - 1;
+    const nomLine = (item.nom + (item.qty > 1 ? ' x' + item.qty : '')).substring(0, maxNom);
+    cmd.push(...right(nomLine, totStr));
+    // Prix unitaire si qté > 1 — aligné à droite proprement
     if (item.qty > 1) {
-      cmd.push(...line('  ' + fmtMoney(item.prix, dev) + '/u'));
+      cmd.push(...alignRight(fmtMoney(item.prix, dev) + '/u'));
     }
   });
 
   cmd.push(...separator());
 
-  // Total en GRAS + GRAND
-  cmd.push(ESC, 0x61, 0x01);    // centrer
-  cmd.push(GS,  0x21, 0x11);    // double taille
-  cmd.push(...escEncode('TOTAL: ' + fmtMoney(sale.total, dev)), 0x0A);
-  cmd.push(GS,  0x21, 0x00);    // normal
+  // --- TOTAL : gras uniquement, PAS de double-hauteur (GS 0x10 coupe à 16 cols sur 58mm)
+  cmd.push(ESC, 0x61, 0x01);             // centrer
+  cmd.push(ESC, 0x45, 0x01);             // gras ON
+  cmd.push(ESC, 0x21, 0x10);             // hauteur x2 via ESC ! (plus compatible que GS !)
+  const totalLine = 'TOTAL: ' + fmtMoney(sale.total, dev);
+  cmd.push(...line(totalLine));
+  cmd.push(ESC, 0x21, 0x00);             // taille normale
+  cmd.push(ESC, 0x45, 0x00);             // gras OFF
+  cmd.push(ESC, 0x61, 0x00);             // retour gauche
 
-  // Pied de page
+  // --- PIED DE PAGE
   cmd.push(...separator());
   cmd.push(...center('Merci pour votre achat !'));
   cmd.push(...center('Digitale Solution'));
-  cmd.push(0x0A, 0x0A, 0x0A);   // 3 lignes vides avant découpe
+  cmd.push(0x0A, 0x0A, 0x0A);           // 3 lignes vides avant découpe
 
   // Découpe papier
-  cmd.push(GS, 0x56, 0x42, 0x00); // coupe partielle
+  cmd.push(GS, 0x56, 0x42, 0x00);
 
   return new Uint8Array(cmd);
 }
